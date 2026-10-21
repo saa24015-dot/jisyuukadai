@@ -1,22 +1,22 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="ja" class="h-full bg-slate-50">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AgriCalc - 肥料計算＆施肥設計マスター</title>
+    <title>肥料計算＆施肥設計マスター</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
     <script>
         tailwind.config = {
             theme: {
                 extend: {
-                    fontFamily: {
-                        sans: ['"Noto Sans JP"', 'sans-serif'],
-                    },
                     colors: {
                         agri: {
                             50: '#f0fdf4',
@@ -28,6 +28,9 @@
                             800: '#166534',
                             900: '#14532d',
                         }
+                    },
+                    fontFamily: {
+                        sans: ['"Noto Sans JP"', 'sans-serif'],
                     }
                 }
             }
@@ -35,609 +38,594 @@
     </script>
     <style>
         body { font-family: 'Noto Sans JP', sans-serif; }
-        /* Hide scrollbars for clean UI while keeping functionality */
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        @media print {
-            .no-print { display: none !important; }
-            .print-only { display: block !important; }
-            body { background: white; color: black; }
-        }
-        .print-only { display: none; }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .glass-card { background: rgba(255, 255, 255, 0.92); backdrop-filter: blur(8px); }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col antialiased selection:bg-agri-500 selection:text-white">
+<body class="h-full flex flex-col text-slate-800 antialiased selection:bg-agri-200">
 
-    <!-- Header & Navigation Bar -->
-    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm no-print">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-16">
-                <!-- Brand Title -->
-                <div class="flex items-center space-x-3">
-                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-agri-500 to-agri-700 flex items-center justify-center text-white shadow-md shadow-agri-600/20">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
-                        </svg>
-                    </div>
-                    <div>
-                        <h1 class="text-lg font-bold text-slate-900 leading-tight">AgriCalc</h1>
-                        <p class="text-xs text-agri-700 font-medium">肥料計算＆施肥設計マスター</p>
-                    </div>
-                </div>
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
-                <!-- Right Header Actions (User Auth Status & Firebase Config Button) -->
-                <div class="flex items-center space-x-2 sm:space-x-3">
-                    <!-- Firebase Config Status Badge -->
-                    <button id="firebase-config-btn" onclick="openConfigModal()" class="hidden sm:flex items-center text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg border border-slate-300 transition">
-                        <span class="w-2 h-2 rounded-full bg-slate-400 mr-2" id="db-status-dot"></span>
-                        <span id="db-status-text">設定確認</span>
-                    </button>
-
-                    <!-- User Profile Area -->
-                    <div id="user-profile-area" class="flex items-center space-x-2">
-                        <!-- Unauthenticated State -->
-                        <button id="google-login-btn" onclick="handleGoogleSignIn()" class="flex items-center space-x-2 bg-white hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-medium px-3.5 py-2 rounded-lg border border-slate-300 shadow-sm transition">
-                            <svg class="w-4 h-4" viewBox="0 0 24 24">
-                                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-                                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-                            </svg>
-                            <span>Google ログイン</span>
-                        </button>
-
-                        <!-- Authenticated State (Hidden initially) -->
-                        <div id="logged-in-user" class="hidden flex items-center space-x-2 bg-slate-100 p-1 pr-3 rounded-full border border-slate-200">
-                            <img id="user-avatar" class="w-7 h-7 rounded-full object-cover border border-white" src="https://placehold.co/100x100/16a34a/ffffff?text=U" alt="User Avatar">
-                            <span id="user-name" class="text-xs font-semibold text-slate-700 max-w-[100px] truncate">ユーザー</span>
-                            <button onclick="handleSignOut()" title="ログアウト" class="text-slate-400 hover:text-red-600 transition pl-1">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Tab Navigation Header -->
-            <div class="flex space-x-1 border-t border-slate-100 overflow-x-auto no-scrollbar py-1">
-                <button onclick="switchTab('calc')" id="tab-btn-calc" class="tab-btn flex items-center space-x-2 px-4 py-2 text-sm font-semibold rounded-lg transition text-agri-700 bg-agri-50">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
-                    </svg>
-                    <span>肥料計算</span>
-                </button>
-
-                <button onclick="switchTab('history')" id="tab-btn-history" class="tab-btn flex items-center space-x-2 px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 rounded-lg hover:bg-slate-100 transition">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                    <span>計算履歴</span>
-                    <span id="history-badge" class="bg-agri-600 text-white text-xs px-1.5 py-0.2 rounded-full hidden">0</span>
-                </button>
-
-                <button onclick="switchTab('db')" id="tab-btn-db" class="tab-btn flex items-center space-x-2 px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 rounded-lg hover:bg-slate-100 transition">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
-                    </svg>
-                    <span>肥料ライブラリ</span>
-                </button>
-
-                <button onclick="switchTab('guide')" id="tab-btn-guide" class="tab-btn flex items-center space-x-2 px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 rounded-lg hover:bg-slate-100 transition">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
-                    </svg>
-                    <span>GitHub/Firebase公開ガイド</span>
-                </button>
-            </div>
+    <!-- Custom Modal Dialogue -->
+    <div id="custom-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm hidden transition-opacity duration-200 opacity-0">
+        <div class="bg-white rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl transform transition-all scale-95" id="modal-content">
+            <h3 id="modal-title" class="text-xl font-bold text-slate-900 mb-2"></h3>
+            <p id="modal-body" class="text-slate-600 mb-6 text-sm leading-relaxed"></p>
+            <div class="flex justify-end gap-3" id="modal-actions"></div>
         </div>
-    </header>
+    </div>
 
-    <!-- Main Dynamic Content Container -->
-    <main class="flex-grow max-w-7xl w-full auto-mx px-4 sm:px-6 lg:px-8 py-6 mx-auto">
+    <!-- ========================================================================= -->
+    <!-- 1. LOGIN WALL / AUTH GATE (VISIBLE WHEN NOT LOGGED IN)                    -->
+    <!-- ========================================================================= -->
+    <div id="login-wall" class="flex-1 flex flex-col justify-center items-center relative overflow-hidden bg-gradient-to-br from-agri-900 via-slate-900 to-agri-950 text-white px-4 py-12 min-h-screen">
+        <!-- Background Elements -->
+        <div class="absolute inset-0 opacity-10 bg-[radial-gradient(#22c55e_1px,transparent_1px)] [background-size:24px_24px]"></div>
+        <div class="absolute -top-40 -right-40 w-96 h-96 bg-agri-500/20 rounded-full blur-3xl"></div>
+        <div class="absolute -bottom-40 -left-40 w-96 h-96 bg-emerald-500/20 rounded-full blur-3xl"></div>
 
-        <!-- Banner for Guest Users / Notice -->
-        <div id="guest-alert-banner" class="mb-6 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 flex items-start justify-between no-print shadow-sm">
-            <div class="flex items-start space-x-3">
-                <svg class="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-                <div class="text-sm">
-                    <span class="font-bold">ゲストモードで実行中:</span> 現在の計算データはこの端末（ローカル）に一時保存されます。Googleアカウントでログインすると、スマホ・パソコン間で履歴が同期されます。
-                </div>
-            </div>
-            <button onclick="document.getElementById('guest-alert-banner').remove()" class="text-amber-500 hover:text-amber-700 ml-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-            </button>
-        </div>
-
-        <!-- TAB 1: FERTILIZER CALCULATOR -->
-        <section id="tab-calc" class="tab-content space-y-6">
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                
-                <!-- LEFT COLUMN: Inputs & Selection (7 cols) -->
-                <div class="lg:col-span-7 space-y-6">
-                    
-                    <!-- STEP 1: Field & Crop Settings -->
-                    <div class="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-5">
-                        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-                            <div class="flex items-center space-x-2">
-                                <span class="w-6 h-6 rounded-full bg-agri-100 text-agri-800 text-xs font-extrabold flex items-center justify-center">1</span>
-                                <h2 class="text-base font-bold text-slate-900">圃場面積と対象作物の設定</h2>
-                            </div>
-                        </div>
-
-                        <!-- Field Area Input & Unit Converter -->
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">圃場（畑・田んぼ）の面積</label>
-                            <div class="flex rounded-xl shadow-sm">
-                                <input type="number" id="field-size-input" value="10" min="0.1" step="any" oninput="calculateAll()" 
-                                       class="flex-1 min-w-0 block w-full px-4 py-2.5 rounded-l-xl border border-r-0 border-slate-300 focus:ring-2 focus:ring-agri-500 focus:border-agri-500 text-base font-bold text-slate-800">
-                                <select id="field-unit-select" onchange="calculateAll()" 
-                                        class="inline-flex items-center px-4 rounded-r-xl border border-slate-300 bg-slate-50 text-slate-700 font-semibold text-sm focus:ring-2 focus:ring-agri-500">
-                                    <option value="10a" selected>10a（反）</option>
-                                    <option value="m2">m²（平米）</option>
-                                    <option value="tsubo">坪（つぼ）</option>
-                                </select>
-                            </div>
-                            <!-- Auto Unit Conversion Indicator -->
-                            <div class="mt-2 text-xs text-slate-500 flex flex-wrap gap-x-4 gap-y-1 bg-slate-50 p-2.5 rounded-lg border border-slate-100">
-                                <span>換算値:</span>
-                                <span class="font-medium text-slate-700"><strong id="conv-m2">1,000</strong> m²</span>
-                                <span class="font-medium text-slate-700"><strong id="conv-10a">1.0</strong> 10a (反)</span>
-                                <span class="font-medium text-slate-700"><strong id="conv-tsubo">302.5</strong> 坪</span>
-                            </div>
-                        </div>
-
-                        <!-- Crop Preset Selector -->
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">対象作物（目標施肥量のプリセット）</label>
-                            <select id="crop-preset-select" onchange="applyCropPreset()" 
-                                    class="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-800 font-medium text-sm focus:ring-2 focus:ring-agri-500">
-                                <option value="tomato">トマト（基肥: N 20, P 25, K 20 kg/10a）</option>
-                                <option value="cucumber">きゅうり（基肥: N 25, P 20, K 25 kg/10a）</option>
-                                <option value="eggplant">ナス（基肥: N 30, P 25, K 25 kg/10a）</option>
-                                <option value="spinach">ホウレンソウ（基肥: N 15, P 15, K 12 kg/10a）</option>
-                                <option value="cabbage">キャベツ（基肥: N 25, P 25, K 20 kg/10a）</option>
-                                <option value="negi">長ネギ（基肥: N 20, P 15, K 20 kg/10a）</option>
-                                <option value="rice">水稲（基肥: N 8, P 8, K 8 kg/10a）</option>
-                                <option value="custom">カスタム（手動で成分量を設定）</option>
-                            </select>
-                        </div>
-
-                        <!-- Target Nutrient Rates Inputs -->
-                        <div class="space-y-3">
-                            <div class="flex justify-between items-center">
-                                <label class="text-xs font-semibold text-slate-600 uppercase tracking-wider">目標成分量（kg / 10a あたり）</label>
-                                <span class="text-xs text-agri-700 font-medium">※10a = 1,000m²</span>
-                            </div>
-                            <div class="grid grid-cols-3 gap-3">
-                                <div class="bg-blue-50/60 p-3 rounded-xl border border-blue-100">
-                                    <label class="block text-xs font-bold text-blue-900 mb-1">窒素 (N)</label>
-                                    <div class="flex items-center">
-                                        <input type="number" id="target-n" value="20" min="0" step="0.1" oninput="calculateAll()" 
-                                               class="w-full bg-white px-3 py-1.5 rounded-lg border border-blue-200 text-base font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                        <span class="ml-1 text-xs text-slate-500">kg</span>
-                                    </div>
-                                </div>
-                                <div class="bg-amber-50/60 p-3 rounded-xl border border-amber-100">
-                                    <label class="block text-xs font-bold text-amber-900 mb-1">リン酸 (P₂O₅)</label>
-                                    <div class="flex items-center">
-                                        <input type="number" id="target-p" value="25" min="0" step="0.1" oninput="calculateAll()" 
-                                               class="w-full bg-white px-3 py-1.5 rounded-lg border border-amber-200 text-base font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500">
-                                        <span class="ml-1 text-xs text-slate-500">kg</span>
-                                    </div>
-                                </div>
-                                <div class="bg-emerald-50/60 p-3 rounded-xl border border-emerald-100">
-                                    <label class="block text-xs font-bold text-emerald-900 mb-1">加里 (K₂O)</label>
-                                    <div class="flex items-center">
-                                        <input type="number" id="target-k" value="20" min="0" step="0.1" oninput="calculateAll()" 
-                                               class="w-full bg-white px-3 py-1.5 rounded-lg border border-emerald-200 text-base font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500">
-                                        <span class="ml-1 text-xs text-slate-500">kg</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- STEP 2: Selected Fertilizer List & Combination Builder -->
-                    <div class="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-                        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-                            <div class="flex items-center space-x-2">
-                                <span class="w-6 h-6 rounded-full bg-agri-100 text-agri-800 text-xs font-extrabold flex items-center justify-center">2</span>
-                                <h2 class="text-base font-bold text-slate-900">使用肥料の選択と投入量の設定</h2>
-                            </div>
-                            <button onclick="openFertilizerPickerModal()" class="inline-flex items-center space-x-1.5 bg-agri-600 hover:bg-agri-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition shadow-sm">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                                <span>肥料を追加</span>
-                            </button>
-                        </div>
-
-                        <!-- Fertilizer List Container -->
-                        <div id="selected-fertilizers-container" class="space-y-3">
-                            <!-- Selected fertilizer items dynamically injected here -->
-                        </div>
-
-                        <!-- Quick Actions Bar -->
-                        <div class="pt-2 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100">
-                            <button onclick="autoOptimizeFertilizers()" class="inline-flex items-center space-x-1.5 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-3 py-2 rounded-lg border border-indigo-200 transition">
-                                <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                                <span>⚡ 自動量調整（窒素基准）</span>
-                            </button>
-                            <button onclick="clearSelectedFertilizers()" class="text-xs text-slate-500 hover:text-red-600 font-medium transition px-2 py-1">
-                                選択をクリア
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Notes Section -->
-                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-2">
-                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">メモ・圃場備考</label>
-                        <textarea id="calc-notes" rows="2" placeholder="例: 東側圃場 元肥施肥用、〇〇コンポ併用" 
-                                  class="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-agri-500 focus:outline-none"></textarea>
-                    </div>
-
-                </div>
-
-                <!-- RIGHT COLUMN: Calculation Summary & Diagnostics (5 cols) -->
-                <div class="lg:col-span-5 space-y-6">
-
-                    <!-- Results Overview Card -->
-                    <div class="bg-gradient-to-br from-slate-900 to-slate-800 text-white p-6 rounded-2xl shadow-lg space-y-6 relative overflow-hidden">
-                        <div class="absolute -right-8 -bottom-8 opacity-10 text-white">
-                            <svg class="w-48 h-48" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>
-                        </div>
-
-                        <div class="flex items-center justify-between border-b border-slate-700/80 pb-4">
-                            <h3 class="text-sm font-bold text-slate-300 tracking-wider uppercase">施肥計算 結果サマリー</h3>
-                            <span id="field-area-summary-badge" class="bg-agri-500/20 text-agri-300 border border-agri-500/30 text-xs px-2.5 py-1 rounded-full font-bold">10a 対象</span>
-                        </div>
-
-                        <!-- Total Cost Display -->
-                        <div class="space-y-1">
-                            <p class="text-xs text-slate-400 font-medium">概算 合計費用</p>
-                            <div class="flex items-baseline space-x-2">
-                                <span class="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">¥<span id="summary-total-cost">0</span></span>
-                                <span class="text-xs text-slate-400">（税込）</span>
-                            </div>
-                            <div class="flex justify-between text-xs text-slate-300 pt-2 border-t border-slate-700/50">
-                                <span>10aあたり: <strong id="summary-cost-per-10a" class="text-emerald-400">¥0</strong></span>
-                                <span>m²あたり: <strong id="summary-cost-per-m2" class="text-emerald-400">¥0</strong></span>
-                            </div>
-                        </div>
-
-                        <!-- Total Bag Count Display -->
-                        <div class="bg-slate-800/80 p-3.5 rounded-xl border border-slate-700/80 flex items-center justify-between">
-                            <span class="text-xs text-slate-300 font-medium">必要袋数 合計</span>
-                            <span class="text-lg font-bold text-agri-400"><span id="summary-total-bags">0</span> 袋</span>
-                        </div>
-
-                        <!-- Save Button -->
-                        <button onclick="saveCalculationRecord()" class="w-full bg-gradient-to-r from-agri-500 to-agri-600 hover:from-agri-600 hover:to-agri-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-md transition transform active:scale-[0.99] flex items-center justify-center space-x-2">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
-                            <span>この施肥設計を保存する</span>
-                        </button>
-                    </div>
-
-                    <!-- Nutrient Balance Diagnostic Bars -->
-                    <div class="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-5">
-                        <h3 class="text-sm font-bold text-slate-900 border-b border-slate-100 pb-3">成分充足率 診断</h3>
-
-                        <!-- Nitrogen Progress -->
-                        <div class="space-y-1.5">
-                            <div class="flex justify-between text-xs font-bold">
-                                <span class="text-blue-900">窒素 (N): <span id="actual-n">0</span> / <span id="req-n">20</span> kg</span>
-                                <span id="pct-n" class="text-slate-600">0%</span>
-                            </div>
-                            <div class="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
-                                <div id="bar-n" class="bg-blue-500 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
-                            </div>
-                            <p id="msg-n" class="text-[11px] text-slate-500">不足しています</p>
-                        </div>
-
-                        <!-- Phosphorus Progress -->
-                        <div class="space-y-1.5">
-                            <div class="flex justify-between text-xs font-bold">
-                                <span class="text-amber-900">リン酸 (P₂O₅): <span id="actual-p">0</span> / <span id="req-p">25</span> kg</span>
-                                <span id="pct-p" class="text-slate-600">0%</span>
-                            </div>
-                            <div class="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
-                                <div id="bar-p" class="bg-amber-500 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
-                            </div>
-                            <p id="msg-p" class="text-[11px] text-slate-500">不足しています</p>
-                        </div>
-
-                        <!-- Potassium Progress -->
-                        <div class="space-y-1.5">
-                            <div class="flex justify-between text-xs font-bold">
-                                <span class="text-emerald-900">加里 (K₂O): <span id="actual-k">0</span> / <span id="req-k">20</span> kg</span>
-                                <span id="pct-k" class="text-slate-600">0%</span>
-                            </div>
-                            <div class="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
-                                <div id="bar-k" class="bg-emerald-500 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
-                            </div>
-                            <p id="msg-k" class="text-[11px] text-slate-500">不足しています</p>
-                        </div>
-
-                        <!-- AI Diagnostic Summary Advice -->
-                        <div id="ai-advice-box" class="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 leading-relaxed">
-                            💡 肥料を選択して投入量を調整してください。
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-        </section>
-
-        <!-- TAB 2: CALCULATION HISTORY -->
-        <section id="tab-history" class="tab-content hidden space-y-6">
-            <div class="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
-                    <div>
-                        <h2 class="text-lg font-bold text-slate-900">保存された施肥計算履歴</h2>
-                        <p class="text-xs text-slate-500">クラウド（Firestore）またはローカルに保存された施肥設計</p>
-                    </div>
-                    <div class="flex items-center space-x-2">
-                        <button onclick="exportHistoryCSV()" class="inline-flex items-center space-x-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-3 py-2 rounded-lg border border-slate-300 transition">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                            <span>CSV出力</span>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- History Search Input -->
-                <div>
-                    <input type="text" id="history-search-input" oninput="renderHistoryList()" placeholder="作物名や備考で検索..." 
-                           class="w-full sm:max-w-xs px-3.5 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-agri-500 focus:outline-none">
-                </div>
-
-                <!-- History Item Cards Grid -->
-                <div id="history-list-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <!-- Dynamic History Cards render here -->
-                </div>
-            </div>
-        </section>
-
-        <!-- TAB 3: FERTILIZER DATABASE MANAGEMENT -->
-        <section id="tab-db" class="tab-content hidden space-y-6">
-            <div class="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-5">
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
-                    <div>
-                        <h2 class="text-lg font-bold text-slate-900">肥料ライブラリ＆カスタム登録</h2>
-                        <p class="text-xs text-slate-500">標準肥料データベースおよび自作のカスタム肥料（単肥・有機堆肥など）管理</p>
-                    </div>
-                    <button onclick="openCustomFertilizerModal()" class="inline-flex items-center space-x-1.5 bg-agri-600 hover:bg-agri-700 text-white text-xs font-bold px-3.5 py-2.5 rounded-xl transition shadow-sm">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                        <span>新しい肥料を追加</span>
-                    </button>
-                </div>
-
-                <!-- Fertilizer DB Table -->
-                <div class="overflow-x-auto rounded-xl border border-slate-200">
-                    <table class="min-w-full divide-y divide-slate-200 text-sm">
-                        <thead class="bg-slate-50">
-                            <tr>
-                                <th class="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase">肥料名</th>
-                                <th class="px-3 py-3 text-center text-xs font-bold text-slate-600 uppercase">N (%)</th>
-                                <th class="px-3 py-3 text-center text-xs font-bold text-slate-600 uppercase">P (%)</th>
-                                <th class="px-3 py-3 text-center text-xs font-bold text-slate-600 uppercase">K (%)</th>
-                                <th class="px-4 py-3 text-right text-xs font-bold text-slate-600 uppercase">規格 (kg/袋)</th>
-                                <th class="px-4 py-3 text-right text-xs font-bold text-slate-600 uppercase">価格 (円/袋)</th>
-                                <th class="px-4 py-3 text-center text-xs font-bold text-slate-600 uppercase">区分</th>
-                                <th class="px-3 py-3 text-center text-xs font-bold text-slate-600 uppercase">操作</th>
-                            </tr>
-                        </thead>
-                        <tbody id="fertilizer-db-table-body" class="bg-white divide-y divide-slate-200">
-                            <!-- Injected JS -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </section>
-
-        <!-- TAB 4: DEPLOYMENT GUIDE TO GITHUB & FIREBASE HOSTING -->
-        <section id="tab-guide" class="tab-content hidden space-y-6">
-            <div class="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm space-y-8">
-                <div>
-                    <span class="bg-agri-100 text-agri-800 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">GitHub & Firebase 無料公開手順</span>
-                    <h2 class="text-2xl font-extrabold text-slate-900 mt-2">インターネット上に完全無料で公開・共有する方法</h2>
-                    <p class="text-sm text-slate-600 mt-1">このアプリ（`index.html` 単一ファイル）をGitHubとFirebase Hostingにアップロードし、独自URLで世界に公開する手順です。</p>
-                </div>
-
-                <!-- Step 1 -->
-                <div class="space-y-3">
-                    <div class="flex items-center space-x-2">
-                        <span class="w-7 h-7 rounded-lg bg-agri-600 text-white font-bold text-sm flex items-center justify-center">1</span>
-                        <h3 class="text-base font-bold text-slate-900">Firebase プロジェクトの作成と Google ログイン有効化</h3>
-                    </div>
-                    <div class="pl-9 space-y-2 text-sm text-slate-700">
-                        <p>1. <a href="https://console.firebase.google.com/" target="_blank" class="text-agri-700 font-bold underline">Firebase Console</a> にアクセスし、「プロジェクトを追加」をクリックします。</p>
-                        <p>2. プロジェクト名（例: <code class="bg-slate-100 px-1.5 py-0.5 rounded text-xs font-mono">agri-calc</code>）を入力して作成します。</p>
-                        <p>3. <strong>Authentication 設定:</strong> 画面左メニュー「構築」→「Authentication」→「始める」→「Google」を選択して有効化します。</p>
-                        <p>4. <strong>Firestore 設定:</strong> 「Firestore Database」→「データベースの作成」→テストモードで開始します。</p>
-                        <p>5. <strong>Web アプリ追加:</strong> プロジェクト概要画面で「Webアイコン (</>)」をクリックし、アプリを登録後、表示された <code class="bg-slate-100 px-1.5 py-0.5 rounded text-xs font-mono">firebaseConfig</code> の値をコピーします。</p>
-                    </div>
-                </div>
-
-                <!-- Step 2 -->
-                <div class="space-y-3">
-                    <div class="flex items-center space-x-2">
-                        <span class="w-7 h-7 rounded-lg bg-agri-600 text-white font-bold text-sm flex items-center justify-center">2</span>
-                        <h3 class="text-base font-bold text-slate-900">GitHub リポジトリの作成</h3>
-                    </div>
-                    <div class="pl-9 space-y-2 text-sm text-slate-700">
-                        <p>1. <a href="https://github.com/new" target="_blank" class="text-agri-700 font-bold underline">GitHub New Repository</a> にアクセスします。</p>
-                        <p>2. リポジトリ名 <code class="bg-slate-100 px-1.5 py-0.5 rounded text-xs font-mono">fertilizer-calc-app</code> を入力し、「Create repository」をクリックします。</p>
-                        <p>3. ダウンロードした <code class="bg-slate-100 px-1.5 py-0.5 rounded text-xs font-mono">index.html</code> をリポジトリのルートに配置して Commit/Push します。</p>
-                    </div>
-                </div>
-
-                <!-- Step 3 -->
-                <div class="space-y-3">
-                    <div class="flex items-center space-x-2">
-                        <span class="w-7 h-7 rounded-lg bg-agri-600 text-white font-bold text-sm flex items-center justify-center">3</span>
-                        <h3 class="text-base font-bold text-slate-900">Firebase CLI でデプロイ (Hosting)</h3>
-                    </div>
-                    <div class="pl-9 space-y-2 text-sm text-slate-700">
-                        <p>ターミナル（またはコマンドプロンプト）で以下のコマンドを実行します：</p>
-                        <pre class="bg-slate-900 text-emerald-400 p-4 rounded-xl font-mono text-xs overflow-x-auto">
-# Firebase CLI のインストール
-npm install -g firebase-tools
-
-# Firebase にログイン
-firebase login
-
-# プロジェクトの初期化
-firebase init hosting
-
-# （質問にはPublic directory: ".", Single page app: "Yes" と回答）
-
-# ホスティングへデプロイ！
-firebase deploy --only hosting
-</pre>
-                        <p class="text-xs text-slate-500">デプロイ完了後、発行された <code class="bg-slate-100 px-1.5 py-0.5 rounded text-xs font-mono">https://YOUR-PROJECT.web.app</code> でアプリが全世界へ一般公開されます！</p>
-                    </div>
-                </div>
-
-            </div>
-        </section>
-
-    </main>
-
-    <!-- FOOTER -->
-    <footer class="bg-white border-t border-slate-200 py-6 mt-12 no-print">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-xs text-slate-500 space-y-1">
-            <p>© 2026 AgriCalc - 肥料計算＆施肥設計マスター All Rights Reserved.</p>
-            <p>※本ツールの施肥計算結果は目安です。実際の圃場条件・土壌診断結果に合わせて適宜調整してください。</p>
-        </div>
-    </footer>
-
-    <!-- MODAL: ADD FERTILIZER TO CALCULATOR PICKER -->
-    <div id="fertilizer-picker-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl space-y-4 max-h-[90vh] flex flex-col">
-            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
-                <h3 class="text-base font-bold text-slate-900">肥料ライブラリから選択</h3>
-                <button onclick="closeFertilizerPickerModal()" class="text-slate-400 hover:text-slate-600">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                </button>
+        <div class="relative z-10 max-w-4xl w-full text-center space-y-8 my-auto">
+            <!-- App Badge & Title -->
+            <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-agri-500/10 border border-agri-500/30 text-agri-300 text-sm font-medium animate-pulse">
+                <i class="fa-solid fa-leaf"></i> 農業従事者・園芸農家のための施肥最適化ツール
             </div>
             
-            <div id="picker-fertilizer-list" class="overflow-y-auto space-y-2 flex-grow pr-1">
-                <!-- Injected JS -->
+            <h1 class="text-4xl md:text-6xl font-extrabold tracking-tight text-white leading-tight">
+                肥料計算 ＆ 施肥設計<span class="text-agri-400">マスター</span>
+            </h1>
+
+            <p class="text-lg md:text-xl text-slate-300 max-w-2xl mx-auto font-light leading-relaxed">
+                作物の目標成分（N-P-K）と圃場面積を入力するだけ。<br class="hidden sm:inline">
+                過不足ない最適な肥料配合をリアルタイムで自動計算・保存できます。
+            </p>
+
+            <!-- Feature Badges Grid -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto pt-4 text-left">
+                <div class="p-4 rounded-xl bg-white/5 border border-white/10 backdrop-blur-md">
+                    <i class="fa-solid fa-bolt text-amber-400 text-xl mb-2"></i>
+                    <h3 class="font-bold text-white text-sm">自動量調整</h3>
+                    <p class="text-xs text-slate-400 mt-1">目標値に合わせた最適な施肥量を自動計算</p>
+                </div>
+                <div class="p-4 rounded-xl bg-white/5 border border-white/10 backdrop-blur-md">
+                    <i class="fa-solid fa-ruler-combined text-emerald-400 text-xl mb-2"></i>
+                    <h3 class="font-bold text-white text-sm">圃場単位換算</h3>
+                    <p class="text-xs text-slate-400 mt-1">m²・10a・坪の相互換算に対応</p>
+                </div>
+                <div class="p-4 rounded-xl bg-white/5 border border-white/10 backdrop-blur-md">
+                    <i class="fa-solid fa-cloud text-sky-400 text-xl mb-2"></i>
+                    <h3 class="font-bold text-white text-sm">クラウド履歴</h3>
+                    <p class="text-xs text-slate-400 mt-1">過去の計算記録を保存・ロード・CSV出力</p>
+                </div>
+                <div class="p-4 rounded-xl bg-white/5 border border-white/10 backdrop-blur-md">
+                    <i class="fa-solid fa-flask text-purple-400 text-xl mb-2"></i>
+                    <h3 class="font-bold text-white text-sm">Myカスタム肥料</h3>
+                    <p class="text-xs text-slate-400 mt-1">自家配合や銘柄肥料を自由に登録管理</p>
+                </div>
             </div>
 
-            <div class="pt-3 border-t border-slate-100 flex justify-end">
-                <button onclick="closeFertilizerPickerModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-4 py-2 rounded-xl transition">閉じる</button>
+            <!-- Login Action Box -->
+            <div class="pt-6 max-w-md mx-auto">
+                <div class="p-6 rounded-2xl bg-white/10 border border-white/20 backdrop-blur-xl shadow-2xl space-y-4">
+                    <h2 class="text-lg font-bold text-white">ログインしてツールを開始</h2>
+                    <p class="text-xs text-slate-300">安全なGoogleアカウント認証により、あなたのデータは自分専用のクラウドデータベースに保存されます。</p>
+                    
+                    <button id="btn-google-login" class="w-full flex items-center justify-center gap-3 bg-white hover:bg-slate-100 text-slate-800 font-bold py-3.5 px-6 rounded-xl shadow-lg transition-all transform active:scale-95 group">
+                        <svg class="w-5 h-5" viewBox="0 0 24 24">
+                            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                        </svg>
+                        <span>Google アカウントでログイン</span>
+                    </button>
+
+                    <div class="relative py-2">
+                        <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-white/10"></div></div>
+                        <div class="relative flex justify-center text-xs text-slate-400"><span class="px-2 bg-transparent">または</span></div>
+                    </div>
+
+                    <button id="btn-anonymous-login" class="w-full py-2.5 px-4 rounded-lg bg-white/10 hover:bg-white/20 text-xs text-slate-200 transition">
+                        <i class="fa-solid fa-user-secret mr-1"></i> お試し体験ログイン (ゲスト利用)
+                    </button>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- MODAL: ADD CUSTOM FERTILIZER TO DB -->
-    <div id="custom-fertilizer-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4">
-            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
-                <h3 class="text-base font-bold text-slate-900">新しいカスタム肥料の登録</h3>
-                <button onclick="closeCustomFertilizerModal()" class="text-slate-400 hover:text-slate-600">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+
+    <!-- ========================================================================= -->
+    <!-- 2. MAIN APP DASHBOARD (VISIBLE WHEN LOGGED IN)                           -->
+    <!-- ========================================================================= -->
+    <div id="app-dashboard" class="hidden flex-1 flex-col min-h-screen bg-slate-50">
+        
+        <!-- Top Navigation Header -->
+        <header class="bg-agri-900 text-white shadow-lg sticky top-0 z-40">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex items-center justify-between h-16">
+                    <!-- Brand Logo -->
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-agri-500 flex items-center justify-center text-white shadow-md font-extrabold text-xl">
+                            🌱
+                        </div>
+                        <div>
+                            <span class="font-bold text-lg leading-tight tracking-wide block">肥料計算＆施肥設計</span>
+                            <span class="text-xs text-agri-300 block -mt-1 font-light">Nutrient Master Pro</span>
+                        </div>
+                    </div>
+
+                    <!-- Desktop Nav Tabs -->
+                    <nav class="hidden md:flex items-center space-x-1">
+                        <button data-tab="calculator" class="nav-btn px-4 py-2 rounded-lg font-medium text-sm transition flex items-center gap-2 bg-agri-800 text-white shadow-inner">
+                            <i class="fa-solid fa-calculator text-agri-300"></i> 施肥計算機
+                        </button>
+                        <button data-tab="history" class="nav-btn px-4 py-2 rounded-lg font-medium text-sm transition flex items-center gap-2 text-agri-200 hover:bg-agri-800/60 hover:text-white">
+                            <i class="fa-solid fa-clock-rotate-left text-agri-300"></i> 計算履歴 <span id="history-badge" class="ml-1 bg-agri-600 text-white text-xs px-2 py-0.5 rounded-full hidden">0</span>
+                        </button>
+                        <button data-tab="custom-fertilizers" class="nav-btn px-4 py-2 rounded-lg font-medium text-sm transition flex items-center gap-2 text-agri-200 hover:bg-agri-800/60 hover:text-white">
+                            <i class="fa-solid fa-flask text-agri-300"></i> Myカスタム肥料
+                        </button>
+                        <button data-tab="guide" class="nav-btn px-4 py-2 rounded-lg font-medium text-sm transition flex items-center gap-2 text-agri-200 hover:bg-agri-800/60 hover:text-white">
+                            <i class="fa-solid fa-book text-agri-300"></i> 公開ガイド
+                        </button>
+                    </nav>
+
+                    <!-- User Profile & Logout -->
+                    <div class="flex items-center gap-3">
+                        <div class="flex items-center gap-2 bg-agri-950/60 py-1.5 px-3 rounded-full border border-agri-700/50">
+                            <img id="user-avatar" src="https://placehold.co/100x100/16a34a/ffffff?text=U" class="w-7 h-7 rounded-full object-cover border border-agri-400" alt="Avatar">
+                            <span id="user-display-name" class="text-xs font-semibold text-slate-100 max-w-[120px] truncate">ユーザー</span>
+                        </div>
+                        <button id="btn-logout" title="ログアウト" class="p-2 rounded-lg bg-agri-800/80 hover:bg-red-600 text-agri-200 hover:text-white transition text-sm">
+                            <i class="fa-solid fa-right-from-bracket"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mobile Navigation Tab Bar -->
+            <div class="md:hidden flex border-t border-agri-800 bg-agri-950 text-xs overflow-x-auto">
+                <button data-tab="calculator" class="nav-btn flex-1 py-3 text-center font-medium transition text-white border-b-2 border-agri-400">
+                    <i class="fa-solid fa-calculator block text-sm mb-0.5"></i> 計算機
+                </button>
+                <button data-tab="history" class="nav-btn flex-1 py-3 text-center font-medium transition text-agri-300 hover:text-white">
+                    <i class="fa-solid fa-clock-rotate-left block text-sm mb-0.5"></i> 履歴
+                </button>
+                <button data-tab="custom-fertilizers" class="nav-btn flex-1 py-3 text-center font-medium transition text-agri-300 hover:text-white">
+                    <i class="fa-solid fa-flask block text-sm mb-0.5"></i> カスタム
+                </button>
+                <button data-tab="guide" class="nav-btn flex-1 py-3 text-center font-medium transition text-agri-300 hover:text-white">
+                    <i class="fa-solid fa-book block text-sm mb-0.5"></i> ガイド
                 </button>
             </div>
+        </header>
 
-            <div class="space-y-3 text-sm">
-                <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">肥料名</label>
-                    <input type="text" id="cust-fert-name" placeholder="例: 自作有機配合肥料" class="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-agri-500">
+        <!-- Main Content Area -->
+        <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
+
+            <!-- ================================================================= -->
+            <!-- TAB 1: FERTILIZER CALCULATOR                                      -->
+            <!-- ================================================================= -->
+            <div id="tab-calculator" class="tab-content space-y-6">
+                
+                <!-- Section 1: Field & Crop Target Setup -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    
+                    <!-- Field Size Conversion Card -->
+                    <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80 space-y-4">
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                            <h2 class="font-bold text-slate-800 flex items-center gap-2">
+                                <i class="fa-solid fa-vector-square text-agri-600"></i> 1. 圃場サイズ設定
+                            </h2>
+                            <span class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-mono">面積換算</span>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">圃場名・対象ブロック</label>
+                            <input type="text" id="input-field-name" value="第1圃場 トマハウス" class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-agri-500 focus:border-agri-500 text-sm">
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-2">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-500 mb-1">面積値</label>
+                                <input type="number" id="input-area-val" value="10" min="0.1" step="0.1" class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-agri-500 font-bold text-slate-800 text-sm">
+                            </div>
+                            <div class="col-span-2">
+                                <label class="block text-xs font-medium text-slate-500 mb-1">単位</label>
+                                <select id="input-area-unit" class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-agri-500 font-medium text-sm bg-slate-50">
+                                    <option value="10a" selected>10a (アール / 1,000m²)</option>
+                                    <option value="m2">m² (平方メートル)</option>
+                                    <option value="tsubo">坪 (ツボ / 約3.3m²)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Converted Equivalent Display -->
+                        <div class="p-3 rounded-xl bg-agri-50 border border-agri-100 text-xs text-agri-900 space-y-1 font-mono">
+                            <div class="flex justify-between"><span>換算 10a (アール):</span><span id="calc-area-10a" class="font-bold">10.00 10a</span></div>
+                            <div class="flex justify-between"><span>換算 平方メートル:</span><span id="calc-area-m2" class="font-bold">10,000 m²</span></div>
+                            <div class="flex justify-between"><span>換算 坪数:</span><span id="calc-area-tsubo" class="font-bold">3,025 坪</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Crop Target Standards Card -->
+                    <div class="lg:col-span-2 bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80 space-y-4">
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                            <h2 class="font-bold text-slate-800 flex items-center gap-2">
+                                <i class="fa-solid fa-bullseye text-agri-600"></i> 2. 目標成分設定 (kg / 10a)
+                            </h2>
+                            <div class="flex items-center gap-2">
+                                <label class="text-xs text-slate-500">標準作物プリセット:</label>
+                                <select id="select-crop-preset" class="px-3 py-1 rounded-lg border border-slate-300 text-xs font-medium bg-slate-50 focus:ring-2 focus:ring-agri-500">
+                                    <option value="custom">カスタム直接指定</option>
+                                    <option value="tomato" selected>🍅 トマト (N20 - P25 - K20)</option>
+                                    <option value="cucumber">🥒 キュウリ (N25 - P20 - K25)</option>
+                                    <option value="eggplant">🍆 ナス (N30 - P25 - K25)</option>
+                                    <option value="spinach">🥬 ホウレンソウ (N15 - P15 - K12)</option>
+                                    <option value="cabbage">🥬 キャベツ (N25 - P20 - K20)</option>
+                                    <option value="rice">🌾 水稲 (本田) (N8 - P8 - K8)</option>
+                                    <option value="strawberry">🍓 イチゴ (N18 - P15 - K15)</option>
+                                    <option value="onion">🧅 タマネギ (N22 - P20 - K20)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <p class="text-xs text-slate-500">10a (1,000m²) あたりに必要な施肥目標量を設定します。実際の全圃場必要量は右側に自動算定されます。</p>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <!-- Target Nitrogen -->
+                            <div class="p-3 rounded-xl bg-blue-50/60 border border-blue-200">
+                                <div class="flex items-center justify-between text-xs font-bold text-blue-900 mb-1">
+                                    <span>窒素 (N)</span>
+                                    <span class="text-[10px] text-blue-600">kg/10a</span>
+                                </div>
+                                <input type="number" id="target-n" value="20" min="0" step="0.5" class="w-full text-lg font-extrabold text-blue-900 bg-white border border-blue-300 rounded-lg p-2 text-center focus:ring-2 focus:ring-blue-500">
+                                <div class="text-right text-[11px] text-blue-700 mt-1 font-mono">
+                                    全圃場必要量: <span id="total-target-n" class="font-bold">200.0</span> kg
+                                </div>
+                            </div>
+
+                            <!-- Target Phosphorus -->
+                            <div class="p-3 rounded-xl bg-amber-50/60 border border-amber-200">
+                                <div class="flex items-center justify-between text-xs font-bold text-amber-900 mb-1">
+                                    <span>燐酸 (P₂O₅)</span>
+                                    <span class="text-[10px] text-amber-600">kg/10a</span>
+                                </div>
+                                <input type="number" id="target-p" value="25" min="0" step="0.5" class="w-full text-lg font-extrabold text-amber-900 bg-white border border-amber-300 rounded-lg p-2 text-center focus:ring-2 focus:ring-amber-500">
+                                <div class="text-right text-[11px] text-amber-700 mt-1 font-mono">
+                                    全圃場必要量: <span id="total-target-p" class="font-bold">250.0</span> kg
+                                </div>
+                            </div>
+
+                            <!-- Target Potassium -->
+                            <div class="p-3 rounded-xl bg-purple-50/60 border border-purple-200">
+                                <div class="flex items-center justify-between text-xs font-bold text-purple-900 mb-1">
+                                    <span>加里 (K₂O)</span>
+                                    <span class="text-[10px] text-purple-600">kg/10a</span>
+                                </div>
+                                <input type="number" id="target-k" value="20" min="0" step="0.5" class="w-full text-lg font-extrabold text-purple-900 bg-white border border-purple-300 rounded-lg p-2 text-center focus:ring-2 focus:ring-purple-500">
+                                <div class="text-right text-[11px] text-purple-700 mt-1 font-mono">
+                                    全圃場必要量: <span id="total-target-k" class="font-bold">200.0</span> kg
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="grid grid-cols-3 gap-2">
-                    <div>
-                        <label class="block text-xs font-bold text-blue-900 mb-1">窒素 N (%)</label>
-                        <input type="number" id="cust-fert-n" value="10" min="0" max="100" step="0.1" class="w-full px-3 py-2 border border-slate-300 rounded-xl">
+
+                <!-- Section 2: Fertilizer Selection & Quantity Controls -->
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80 space-y-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                        <div>
+                            <h2 class="font-bold text-slate-800 flex items-center gap-2">
+                                <i class="fa-solid fa-cubes text-agri-600"></i> 3. 施肥構成と投下量の設定
+                            </h2>
+                            <p class="text-xs text-slate-500">使用する肥料を選択し、10aあたりの施用量を入力してください。</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button id="btn-auto-optimize" class="px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold rounded-xl shadow-md text-xs transition flex items-center gap-1.5 active:scale-95">
+                                <i class="fa-solid fa-wand-magic-sparkles"></i> ⚡ 自動量調整 (Auto-Solver)
+                            </button>
+                            <button id="btn-add-fertilizer" class="px-4 py-2 bg-agri-600 hover:bg-agri-700 text-white font-bold rounded-xl shadow-md text-xs transition flex items-center gap-1.5 active:scale-95">
+                                <i class="fa-solid fa-plus"></i> 肥料を追加
+                            </button>
+                        </div>
                     </div>
-                    <div>
-                        <label class="block text-xs font-bold text-amber-900 mb-1">リン酸 P (%)</label>
-                        <input type="number" id="cust-fert-p" value="10" min="0" max="100" step="0.1" class="w-full px-3 py-2 border border-slate-300 rounded-xl">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-emerald-900 mb-1">加里 K (%)</label>
-                        <input type="number" id="cust-fert-k" value="10" min="0" max="100" step="0.1" class="w-full px-3 py-2 border border-slate-300 rounded-xl">
+
+                    <!-- Fertilizer Dynamic List -->
+                    <div id="fertilizer-rows-container" class="space-y-3">
+                        <!-- Dynamic fertilizer rows will be rendered here -->
                     </div>
                 </div>
-                <div class="grid grid-cols-2 gap-2">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-700 mb-1">1袋あたりの重量 (kg)</label>
-                        <input type="number" id="cust-fert-weight" value="20" min="0.1" step="0.1" class="w-full px-3 py-2 border border-slate-300 rounded-xl">
+
+                <!-- Section 3: Real-Time Diagnostic Analysis & Gauges -->
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80 space-y-6">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                        <h2 class="font-bold text-slate-800 flex items-center gap-2">
+                            <i class="fa-solid fa-chart-pie text-agri-600"></i> 4. リアルタイム成分均衡分析
+                        </h2>
+                        <button id="btn-save-plan" class="px-5 py-2.5 bg-agri-700 hover:bg-agri-800 text-white font-bold rounded-xl shadow-lg text-sm transition flex items-center gap-2 active:scale-95">
+                            <i class="fa-solid fa-floppy-disk"></i> この施肥設計を保存
+                        </button>
                     </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-700 mb-1">1袋あたりの価格 (円)</label>
-                        <input type="number" id="cust-fert-price" value="2500" min="0" step="10" class="w-full px-3 py-2 border border-slate-300 rounded-xl">
+
+                    <!-- Progress Bar Gauges -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <!-- Nitrogen Gauge -->
+                        <div class="space-y-2 p-4 rounded-xl bg-slate-50 border border-slate-200">
+                            <div class="flex justify-between items-center text-xs font-bold">
+                                <span class="text-blue-900">窒素 (N) 充足度</span>
+                                <span id="gauge-n-text" class="font-mono text-slate-700">0.0 / 20.0 kg/10a (0%)</span>
+                            </div>
+                            <div class="w-full bg-slate-200 rounded-full h-3 overflow-hidden">
+                                <div id="gauge-n-bar" class="h-full bg-blue-500 transition-all duration-300 rounded-full" style="width: 0%"></div>
+                            </div>
+                            <div id="gauge-n-badge" class="text-right text-[11px] font-bold text-slate-500">未設定</div>
+                        </div>
+
+                        <!-- Phosphorus Gauge -->
+                        <div class="space-y-2 p-4 rounded-xl bg-slate-50 border border-slate-200">
+                            <div class="flex justify-between items-center text-xs font-bold">
+                                <span class="text-amber-900">燐酸 (P₂O₅) 充足度</span>
+                                <span id="gauge-p-text" class="font-mono text-slate-700">0.0 / 25.0 kg/10a (0%)</span>
+                            </div>
+                            <div class="w-full bg-slate-200 rounded-full h-3 overflow-hidden">
+                                <div id="gauge-p-bar" class="h-full bg-amber-500 transition-all duration-300 rounded-full" style="width: 0%"></div>
+                            </div>
+                            <div id="gauge-p-badge" class="text-right text-[11px] font-bold text-slate-500">未設定</div>
+                        </div>
+
+                        <!-- Potassium Gauge -->
+                        <div class="space-y-2 p-4 rounded-xl bg-slate-50 border border-slate-200">
+                            <div class="flex justify-between items-center text-xs font-bold">
+                                <span class="text-purple-900">加里 (K₂O) 充足度</span>
+                                <span id="gauge-k-text" class="font-mono text-slate-700">0.0 / 20.0 kg/10a (0%)</span>
+                            </div>
+                            <div class="w-full bg-slate-200 rounded-full h-3 overflow-hidden">
+                                <div id="gauge-k-bar" class="h-full bg-purple-500 transition-all duration-300 rounded-full" style="width: 0%"></div>
+                            </div>
+                            <div id="gauge-k-badge" class="text-right text-[11px] font-bold text-slate-500">未設定</div>
+                        </div>
+                    </div>
+
+                    <!-- Total Summary Banner -->
+                    <div id="diagnostic-card" class="p-4 rounded-xl bg-agri-50 border border-agri-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                        <div class="flex items-start gap-3">
+                            <div class="w-10 h-10 rounded-full bg-agri-200 text-agri-800 flex items-center justify-center shrink-0 mt-0.5">
+                                <i class="fa-solid fa-clipboard-check text-lg"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-agri-950 text-sm">施肥設計 総合アドバイス</h4>
+                                <p id="diagnostic-summary" class="text-xs text-agri-900 mt-0.5">施肥設計が最適範囲に収まっています。</p>
+                            </div>
+                        </div>
+                        <div class="text-right shrink-0 bg-white px-4 py-2 rounded-lg border border-agri-200">
+                            <span class="text-[10px] text-slate-500 block uppercase font-bold">総投下肥料量 (全圃場)</span>
+                            <span id="total-fertilizer-weight" class="text-lg font-black text-agri-800 font-mono">0.0 kg</span>
+                            <span id="total-bags-estimate" class="text-xs text-slate-600 block">（約 0 袋）</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+
+            <!-- ================================================================= -->
+            <!-- TAB 2: CALCULATION HISTORY (FIRESTORE)                           -->
+            <!-- ================================================================= -->
+            <div id="tab-history" class="tab-content hidden space-y-6">
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80 space-y-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+                        <div>
+                            <h2 class="font-bold text-slate-800 text-lg flex items-center gap-2">
+                                <i class="fa-solid fa-clock-rotate-left text-agri-600"></i> 計算・施肥設計履歴
+                            </h2>
+                            <p class="text-xs text-slate-500">Firestore上にリアルタイム保存された過去の施肥設計をロード・管理できます。</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button id="btn-export-csv" class="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-xs transition flex items-center gap-2">
+                                <i class="fa-solid fa-file-csv text-emerald-400"></i> CSVエクスポート (Excel対応)
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Search Filter Bar -->
+                    <div class="flex items-center gap-3 bg-slate-50 p-2 rounded-xl border border-slate-200">
+                        <i class="fa-solid fa-magnifying-glass text-slate-400 ml-2"></i>
+                        <input type="text" id="history-search" placeholder="圃場名や肥料名で検索..." class="w-full bg-transparent border-none text-xs focus:outline-none">
+                    </div>
+
+                    <!-- History List Container -->
+                    <div id="history-list-container" class="space-y-3">
+                        <div class="text-center py-12 text-slate-400 text-sm">
+                            <i class="fa-solid fa-spinner fa-spin text-2xl mb-2 block text-agri-500"></i>
+                            履歴データを読み込んでいます...
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <div class="pt-3 border-t border-slate-100 flex justify-end space-x-2">
-                <button onclick="closeCustomFertilizerModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-4 py-2 rounded-xl transition">キャンセル</button>
-                <button onclick="saveCustomFertilizer()" class="bg-agri-600 hover:bg-agri-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow-sm">登録する</button>
+
+            <!-- ================================================================= -->
+            <!-- TAB 3: CUSTOM FERTILIZER DATABASE                                 -->
+            <!-- ================================================================= -->
+            <div id="tab-custom-fertilizers" class="tab-content hidden space-y-6">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    
+                    <!-- Registration Form -->
+                    <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80 space-y-4">
+                        <h2 class="font-bold text-slate-800 border-b border-slate-100 pb-3 flex items-center gap-2">
+                            <i class="fa-solid fa-plus-circle text-agri-600"></i> カスタム肥料の新規登録
+                        </h2>
+
+                        <form id="form-custom-fertilizer" class="space-y-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">肥料名 *</label>
+                                <input type="text" id="custom-f-name" placeholder="例: 自家配合 有機1号" required class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-agri-500">
+                            </div>
+
+                            <div class="grid grid-cols-3 gap-2">
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-600 mb-1">N (%)</label>
+                                    <input type="number" id="custom-f-n" value="10" min="0" max="100" step="0.1" required class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold text-blue-900">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-600 mb-1">P (%)</label>
+                                    <input type="number" id="custom-f-p" value="10" min="0" max="100" step="0.1" required class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold text-amber-900">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-600 mb-1">K (%)</label>
+                                    <input type="number" id="custom-f-k" value="10" min="0" max="100" step="0.1" required class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold text-purple-900">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">1袋規格重量 (kg)</label>
+                                <input type="number" id="custom-f-bag" value="20" min="1" step="0.5" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">備考 / 特徴</label>
+                                <input type="text" id="custom-f-note" placeholder="例: 有機割合50%、緩効性肥料" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs">
+                            </div>
+
+                            <button type="submit" class="w-full py-2.5 bg-agri-600 hover:bg-agri-700 text-white font-bold rounded-xl text-xs transition shadow-md">
+                                <i class="fa-solid fa-save mr-1"></i> カスタム肥料を保存
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Registered List -->
+                    <div class="lg:col-span-2 bg-white rounded-2xl p-5 shadow-sm border border-slate-200/80 space-y-4">
+                        <h2 class="font-bold text-slate-800 border-b border-slate-100 pb-3 flex items-center justify-between">
+                            <span class="flex items-center gap-2"><i class="fa-solid fa-list-check text-agri-600"></i> 登録済みカスタム肥料</span>
+                            <span id="custom-f-count" class="text-xs text-slate-500 font-normal">0 件登録</span>
+                        </h2>
+
+                        <div id="custom-f-list" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <!-- Custom fertilizer cards dynamically inserted -->
+                        </div>
+                    </div>
+                </div>
             </div>
-        </div>
+
+
+            <!-- ================================================================= -->
+            <!-- TAB 4: FIREBASE & GITHUB DEPLOYMENT GUIDE                         -->
+            <!-- ================================================================= -->
+            <div id="tab-guide" class="tab-content hidden space-y-6">
+                <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200/80 space-y-6">
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                            <i class="fa-solid fa-cloud-arrow-up text-agri-600"></i> Firebase ＆ GitHub デプロイ・公開ガイド
+                        </h2>
+                        <p class="text-xs text-slate-500 mt-1">この単一HTMLファイルWebアプリをご自身のFirebaseプロジェクトやGitHub Pagesへデプロイして全世界へ公開する手順です。</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        
+                        <!-- Step 1 -->
+                        <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                            <span class="text-xs font-bold text-agri-700 uppercase tracking-wider block">Step 1</span>
+                            <h3 class="font-bold text-slate-800 text-sm">Firebase Authentication（Google Auth）設定</h3>
+                            <p class="text-xs text-slate-600">1. <a href="https://console.firebase.google.com/" target="_blank" class="text-agri-600 underline">Firebase Console</a> でプロジェクト作成。<br>2. 「Authentication」>「Get Started」>「Google」を有効化。<br>3. 「承認済みドメイン」に開発ドメインやlocalhostを追加。</p>
+                        </div>
+
+                        <!-- Step 2 -->
+                        <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                            <span class="text-xs font-bold text-agri-700 uppercase tracking-wider block">Step 2</span>
+                            <h3 class="font-bold text-slate-800 text-sm">Firestore セキュリティルールの設定</h3>
+                            <p class="text-xs text-slate-600 mb-2">ログインユーザー本人のみが自身のデータを読み書きできるルールを適用します：</p>
+                            <div class="relative bg-slate-900 text-slate-200 p-3 rounded-lg text-[11px] font-mono overflow-x-auto">
+                                <button onclick="copyCode(this)" class="absolute top-2 right-2 bg-slate-700 hover:bg-slate-600 text-white px-2 py-0.5 rounded text-[10px]">コピー</button>
+<pre>rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /artifacts/{appId}/users/{userId}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}</pre>
+                            </div>
+                        </div>
+
+                        <!-- Step 3 -->
+                        <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                            <span class="text-xs font-bold text-agri-700 uppercase tracking-wider block">Step 3</span>
+                            <h3 class="font-bold text-slate-800 text-sm">Firebase CLIで Hosting 初期化 ＆ デプロイ</h3>
+                            <p class="text-xs text-slate-600">ターミナル等で以下のコマンドを実行し、Firebase Hostingへ1発デプロイします。</p>
+                            <div class="relative bg-slate-900 text-slate-200 p-3 rounded-lg text-[11px] font-mono overflow-x-auto">
+                                <button onclick="copyCode(this)" class="absolute top-2 right-2 bg-slate-700 hover:bg-slate-600 text-white px-2 py-0.5 rounded text-[10px]">コピー</button>
+<pre># Firebase CLIのインストール
+npm install -g firebase-tools
+
+# Firebaseログイン
+firebase login
+
+# プロジェクト初期化
+firebase init hosting
+
+# 1発デプロイ！
+firebase deploy --only hosting</pre>
+                            </div>
+                        </div>
+
+                        <!-- Step 4 -->
+                        <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                            <span class="text-xs font-bold text-agri-700 uppercase tracking-wider block">Step 4</span>
+                            <h3 class="font-bold text-slate-800 text-sm">GitHub リポジトリヘのプッシュ</h3>
+                            <p class="text-xs text-slate-600">コードをGitHubに保存・バージョン管理する場合の標準コマンドです。</p>
+                            <div class="relative bg-slate-900 text-slate-200 p-3 rounded-lg text-[11px] font-mono overflow-x-auto">
+                                <button onclick="copyCode(this)" class="absolute top-2 right-2 bg-slate-700 hover:bg-slate-600 text-white px-2 py-0.5 rounded text-[10px]">コピー</button>
+<pre>git init
+git add .
+git commit -m "Feat: 肥料計算＆施肥設計マスター Release"
+git branch -M main
+git remote add origin https://github.com/yourname/fertilizer-master.git
+git push -u origin main</pre>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+        </main>
     </div>
 
-    <!-- MODAL: FIREBASE CONFIG SETTINGS -->
-    <div id="config-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl space-y-4">
-            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
-                <h3 class="text-base font-bold text-slate-900">Firebase 設定パラメータ</h3>
-                <button onclick="closeConfigModal()" class="text-slate-400 hover:text-slate-600">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                </button>
-            </div>
 
-            <p class="text-xs text-slate-600">独自にFirebase Hosting/Auth環境を構築した場合、以下のJSON形式でFirebase Configを登録して直接テストできます。</p>
-            <textarea id="firebase-config-json-input" rows="8" class="w-full font-mono text-xs p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-agri-500" placeholder='{\n  "apiKey": "...",\n  "authDomain": "...",\n  "projectId": "..."\n}'></textarea>
-
-            <div class="pt-2 flex justify-between items-center border-t border-slate-100">
-                <button onclick="resetFirebaseConfig()" class="text-xs text-red-600 hover:underline">デフォルトに戻す</button>
-                <div class="space-x-2">
-                    <button onclick="closeConfigModal()" class="bg-slate-100 text-slate-700 text-xs font-bold px-4 py-2 rounded-xl">閉じる</button>
-                    <button onclick="saveFirebaseConfigFromInput()" class="bg-agri-600 text-white text-xs font-bold px-4 py-2 rounded-xl">保存して適用</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- TOAST NOTIFICATION CONTAINER -->
-    <div id="toast-container" class="fixed bottom-5 right-5 z-50 space-y-2 pointer-events-none"></div>
-
-
-    <!-- JAVASCRIPT & FIREBASE INTEGRATION MODULE -->
+    <!-- ========================================================================= -->
+    <!-- 3. JAVASCRIPT LOGIC & FIREBASE INTEGRATION                                 -->
+    <!-- ========================================================================= -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { 
             getAuth, 
-            signInAnonymously, 
             signInWithPopup, 
             GoogleAuthProvider, 
             signOut, 
             onAuthStateChanged,
-            signInWithCustomToken 
+            signInWithCustomToken,
+            signInAnonymously
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { 
             getFirestore, 
-            doc, 
-            getDoc, 
-            setDoc, 
-            addDoc, 
-            deleteDoc, 
             collection, 
-            getDocs, 
+            doc, 
+            addDoc, 
+            setDoc, 
+            deleteDoc, 
             onSnapshot 
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // APP STATE & CONSTANTS
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'fertilizer-calc-app';
+        // Global App State & Standard Presets
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'fertilizer-master-app';
         
-        // Default Config Fallback
-        const defaultFirebaseConfig = {
-             apiKey: "AIzaSyAgwDdxrXjjwU2VV_Q1BNY57_o1i3_sc9c",
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+           apiKey: "AIzaSyAgwDdxrXjjwU2VV_Q1BNY57_o1i3_sc9c",
   authDomain: "jisyuukadai.firebaseapp.com",
   projectId: "jisyuukadai",
   storageBucket: "jisyuukadai.firebasestorage.app",
@@ -645,824 +633,871 @@ firebase deploy --only hosting
   appId: "1:420569810687:web:19a714bec898c95b066eca"
         };
 
-        let activeFirebaseConfig = typeof __firebase_config !== 'undefined' 
-            ? JSON.parse(__firebase_config) 
-            : (JSON.parse(localStorage.getItem('agri_custom_fb_config') || 'null') || defaultFirebaseConfig);
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
 
-        let app, auth, db;
-        let currentUser = null;
-        let isFirebaseConnected = false;
-
-        // PREDEFINED FERTILIZER DATABASE
-        const presetFertilizers = [
-            { id: 'f1', name: '高度化成 14-14-14', n: 14, p: 14, k: 14, weight: 20, price: 3200, isPreset: true },
-            { id: 'f2', name: '普通化成 8-8-8', n: 8, p: 8, k: 8, weight: 20, price: 1800, isPreset: true },
-            { id: 'f3', name: '有機入り化成 10-10-10', n: 10, p: 10, k: 10, weight: 20, price: 2600, isPreset: true },
-            { id: 'f4', name: '野菜専用化成 12-16-14', n: 12, p: 16, k: 14, weight: 20, price: 3400, isPreset: true },
-            { id: 'f5', name: '硫安 (窒素21%)', n: 21, p: 0, k: 0, weight: 20, price: 1400, isPreset: true },
-            { id: 'f6', name: '尿素 (窒素46%)', n: 46, p: 0, k: 0, weight: 20, price: 2200, isPreset: true },
-            { id: 'f7', name: '過燐酸石灰 (過石 P17.5%)', n: 0, p: 17.5, k: 0, weight: 20, price: 1600, isPreset: true },
-            { id: 'f8', name: '重過燐酸石灰 (P35%)', n: 0, p: 35, k: 0, weight: 20, price: 2800, isPreset: true },
-            { id: 'f9', name: '塩化加里 (塩加 K60%)', n: 0, p: 0, k: 60, weight: 20, price: 2800, isPreset: true },
-            { id: 'f10', name: '硫酸加里 (硫加 K50%)', n: 0, p: 0, k: 50, weight: 20, price: 3200, isPreset: true },
-            { id: 'f11', name: '発酵牛糞堆肥 (1.5-2.0-1.5)', n: 1.5, p: 2.0, k: 1.5, weight: 15, price: 480, isPreset: true }
+        // Standard Fertilizer Preset Database
+        const STANDARD_FERTILIZERS = [
+            { id: 'std_14_14_14', name: '14-14-14高度化成', n: 14, p: 14, k: 14, bagWeight: 20 },
+            { id: 'std_15_15_15', name: '15-15-15高度化成', n: 15, p: 15, k: 15, bagWeight: 20 },
+            { id: 'std_8_8_8', name: 'オール8普通化成 (8-8-8)', n: 8, p: 8, k: 8, bagWeight: 20 },
+            { id: 'std_urea', name: '尿素 (窒素単肥 N46%)', n: 46, p: 0, k: 0, bagWeight: 20 },
+            { id: 'std_ammonium_sulfate', name: '硫安 (N21%)', n: 21, p: 0, k: 0, bagWeight: 20 },
+            { id: 'std_superphosphate', name: '過燐酸石灰 (P20%)', n: 0, p: 20, k: 0, bagWeight: 20 },
+            { id: 'std_potassium_sulfate', name: '硫酸加里 (K50%)', n: 0, p: 0, k: 50, bagWeight: 20 },
+            { id: 'std_potassium_chloride', name: '塩化加里 (K60%)', n: 0, p: 0, k: 60, bagWeight: 20 },
+            { id: 'std_chicken_manure', name: '発酵鶏糞 (N3.0%-P5.0%-K3.0%)', n: 3.0, p: 5.0, k: 3.0, bagWeight: 15 },
+            { id: 'std_cow_manure', name: '牛糞堆肥 (N1.5%-P2.0%-K1.5%)', n: 1.5, p: 2.0, k: 1.5, bagWeight: 40 },
         ];
 
-        let customFertilizers = JSON.parse(localStorage.getItem('agri_custom_fert_list') || '[]');
-        let selectedFertilizers = []; // Items selected in calculator: { fertId, dosageKg }
-        let historyRecords = [];
+        // Crop Preset NPK Standards (kg / 10a)
+        const CROP_PRESETS = {
+            tomato: { n: 20, p: 25, k: 20 },
+            cucumber: { n: 25, p: 20, k: 25 },
+            eggplant: { n: 30, p: 25, k: 25 },
+            spinach: { n: 15, p: 15, k: 12 },
+            cabbage: { n: 25, p: 20, k: 20 },
+            rice: { n: 8, p: 8, k: 8 },
+            strawberry: { n: 18, p: 15, k: 15 },
+            onion: { n: 22, p: 20, k: 20 },
+        };
 
-        // INITIALIZATION
-        window.addEventListener('DOMContentLoaded', async () => {
-            initFirebase();
-            initDefaultCalculatorState();
-            renderFertilizerDbTable();
-            loadHistoryRecords();
+        // Application Internal State
+        let currentUser = null;
+        let activeHistoryDocs = [];
+        let customFertilizers = [];
+        let selectedFertilizerRows = []; // [{ id, fertilizerId, amountPer10a }]
+
+        // Initial default calculation setup
+        selectedFertilizerRows = [
+            { id: 'row_' + Date.now() + '_1', fertilizerId: 'std_15_15_15', amountPer10a: 100 },
+            { id: 'row_' + Date.now() + '_2', fertilizerId: 'std_urea', amountPer10a: 10 },
+            { id: 'row_' + Date.now() + '_3', fertilizerId: 'std_superphosphate', amountPer10a: 25 }
+        ];
+
+        // Initialize Authentication Observer
+        onAuthStateChanged(auth, async (user) => {
+            currentUser = user;
+            const loginWall = document.getElementById('login-wall');
+            const dashboard = document.getElementById('app-dashboard');
+
+            if (user) {
+                // User is authenticated
+                loginWall.classList.add('hidden');
+                dashboard.classList.remove('hidden');
+                dashboard.classList.add('flex');
+
+                document.getElementById('user-display-name').textContent = user.displayName || user.email || 'ゲストユーザー';
+                if (user.photoURL) {
+                    document.getElementById('user-avatar').src = user.photoURL;
+                }
+
+                showToast(`ようこそ、${user.displayName || 'ユーザー'} さん！`, 'success');
+
+                // Initialize Firestore listeners
+                initFirestoreListeners(user.uid);
+            } else {
+                // User is signed out -> Strict Gate
+                loginWall.classList.remove('hidden');
+                dashboard.classList.add('hidden');
+                dashboard.classList.remove('flex');
+            }
         });
 
-        // FIREBASE SETUP & AUTH
-        function initFirebase() {
-            try {
-                app = initializeApp(activeFirebaseConfig);
-                auth = getAuth(app);
-                db = getFirestore(app);
-
-                // Listen to Auth State
-                onAuthStateChanged(auth, async (user) => {
-                    currentUser = user;
-                    updateUserUi(user);
-                    if (user) {
-                        isFirebaseConnected = true;
-                        updateDbStatusBadge(true, user.isAnonymous ? 'ゲスト認証' : 'Cloud同期中');
-                        await syncHistoryFromFirestore();
-                    } else {
-                        // Perform fallback sign in (Custom Token or Anonymous)
-                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                            try {
-                                await signInWithCustomToken(auth, __initial_auth_token);
-                            } catch (e) {
-                                console.warn("Custom token auth failed, falling back to anonymous", e);
-                                await signInAnonymously(auth);
-                            }
-                        } else {
-                            try {
-                                await signInAnonymously(auth);
-                            } catch (e) {
-                                console.warn("Anonymous login failed, running offline/local mode", e);
-                                isFirebaseConnected = false;
-                                updateDbStatusBadge(false, 'ローカルモード');
-                            }
-                        }
-                    }
-                });
-            } catch (err) {
-                console.warn("Firebase initialization error, running in local state mode:", err);
-                isFirebaseConnected = false;
-                updateDbStatusBadge(false, 'ローカルモード');
-            }
+        // Handle Automatic Token Auth if provided
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+            signInWithCustomToken(auth, __initial_auth_token).catch(() => {});
         }
 
-        // UPDATE USER UI BADGE
-        function updateUserUi(user) {
-            const loginBtn = document.getElementById('google-login-btn');
-            const userProfile = document.getElementById('logged-in-user');
-            const avatar = document.getElementById('user-avatar');
-            const name = document.getElementById('user-name');
-            const banner = document.getElementById('guest-alert-banner');
-
-            if (user && !user.isAnonymous) {
-                loginBtn.classList.add('hidden');
-                userProfile.classList.remove('hidden');
-                avatar.src = user.photoURL || `https://placehold.co/100x100/16a34a/ffffff?text=${encodeURIComponent(user.displayName ? user.displayName[0] : 'U')}`;
-                name.textContent = user.displayName || user.email || 'ログインユーザー';
-                if (banner) banner.classList.add('hidden');
-            } else {
-                loginBtn.classList.remove('hidden');
-                userProfile.classList.add('hidden');
-                if (banner) banner.classList.remove('hidden');
-            }
-        }
-
-        function updateDbStatusBadge(connected, text) {
-            const dot = document.getElementById('db-status-dot');
-            const statusText = document.getElementById('db-status-text');
-            statusText.textContent = text;
-            if (connected) {
-                dot.className = 'w-2 h-2 rounded-full bg-emerald-500 mr-2 animate-pulse';
-            } else {
-                dot.className = 'w-2 h-2 rounded-full bg-amber-500 mr-2';
-            }
-        }
-
-        // GOOGLE AUTHENTICATION
-        window.handleGoogleSignIn = async function() {
-            if (!auth) {
-                showToast("Firebaseが初期化されていません。設定を確認してください。", "error");
-                return;
-            }
+        // =========================================================================
+        // AUTHENTICATION EVENT HANDLERS
+        // =========================================================================
+        document.getElementById('btn-google-login').addEventListener('click', async () => {
             try {
                 const provider = new GoogleAuthProvider();
                 await signInWithPopup(auth, provider);
-                showToast("Googleアカウントでログインしました！", "success");
-            } catch (error) {
-                console.error("Google Sign-in error:", error);
-                showToast("ログインに失敗しました: " + error.message, "error");
-            }
-        };
-
-        window.handleSignOut = async function() {
-            if (!auth) return;
-            try {
-                await signOut(auth);
-                await signInAnonymously(auth);
-                showToast("ログアウトしました（ゲストモードに移行）", "info");
-            } catch (error) {
-                console.error("Sign-out error:", error);
-            }
-        };
-
-        // CALCULATOR INITIALIZATION & LOGIC
-        function initDefaultCalculatorState() {
-            // Add default fertilizers to selection: 14-14-14
-            selectedFertilizers = [
-                { fertId: 'f1', dosageKg: 142.8 },
-                { fertId: 'f7', dosageKg: 28.5 }
-            ];
-            renderSelectedFertilizers();
-            calculateAll();
-        }
-
-        // CONVERT FIELD SIZE TO METERS SQUARED
-        function getFieldAreaInM2() {
-            const val = parseFloat(document.getElementById('field-size-input').value) || 0;
-            const unit = document.getElementById('field-unit-select').value;
-            if (unit === '10a') return val * 1000; // 1反 = 1,000m²
-            if (unit === 'tsubo') return val * 3.305785; // 1坪 ≈ 3.305785m²
-            return val; // m2
-        }
-
-        // CROP PRESET HANDLER
-        window.applyCropPreset = function() {
-            const presetKey = document.getElementById('crop-preset-select').value;
-            const nInput = document.getElementById('target-n');
-            const pInput = document.getElementById('target-p');
-            const kInput = document.getElementById('target-k');
-
-            const presets = {
-                tomato: { n: 20, p: 25, k: 20 },
-                cucumber: { n: 25, p: 20, k: 25 },
-                eggplant: { n: 30, p: 25, k: 25 },
-                spinach: { n: 15, p: 15, k: 12 },
-                cabbage: { n: 25, p: 25, k: 20 },
-                negi: { n: 20, p: 15, k: 20 },
-                rice: { n: 8, p: 8, k: 8 }
-            };
-
-            if (presets[presetKey]) {
-                nInput.value = presets[presetKey].n;
-                pInput.value = presets[presetKey].p;
-                kInput.value = presets[presetKey].k;
-            }
-            calculateAll();
-        };
-
-        // MAIN CALCULATOR LOGIC
-        window.calculateAll = function() {
-            const areaM2 = getFieldAreaInM2();
-            const area10a = areaM2 / 1000;
-            const areaTsubo = areaM2 / 3.305785;
-
-            // Update Unit Conversion Indicators
-            document.getElementById('conv-m2').textContent = areaM2.toLocaleString('ja-JP', { maximumFractionDigits: 1 });
-            document.getElementById('conv-10a').textContent = area10a.toLocaleString('ja-JP', { maximumFractionDigits: 2 });
-            document.getElementById('conv-tsubo').textContent = areaTsubo.toLocaleString('ja-JP', { maximumFractionDigits: 1 });
-
-            // Target Requirements for total field in kg
-            const targetN10a = parseFloat(document.getElementById('target-n').value) || 0;
-            const targetP10a = parseFloat(document.getElementById('target-p').value) || 0;
-            const targetK10a = parseFloat(document.getElementById('target-k').value) || 0;
-
-            const totalReqN = targetN10a * area10a; // total kg needed
-            const totalReqP = targetP10a * area10a;
-            const totalReqK = targetK10a * area10a;
-
-            // Calculate actual nutrients applied from selected fertilizers
-            let actualN = 0;
-            let actualP = 0;
-            let actualK = 0;
-            let totalCost = 0;
-            let totalBags = 0;
-
-            const allFertilizers = getAllFertilizers();
-
-            selectedFertilizers.forEach(item => {
-                const fert = allFertilizers.find(f => f.id === item.fertId);
-                if (fert) {
-                    const dosage = parseFloat(item.dosageKg) || 0;
-                    actualN += dosage * (fert.n / 100);
-                    actualP += dosage * (fert.p / 100);
-                    actualK += dosage * (fert.k / 100);
-
-                    const bags = fert.weight > 0 ? (dosage / fert.weight) : 0;
-                    totalBags += bags;
-                    totalCost += bags * fert.price;
+            } catch (err) {
+                console.error("Auth Error:", err);
+                // Fallback attempt if popup is restricted
+                showToast("Googleログインでエラーが発生しました。お試し体験でログインします。", "info");
+                try {
+                    await signInAnonymously(auth);
+                } catch (e) {
+                    showModal("ログイン失敗", "認証処理中にエラーが発生しました: " + err.message);
                 }
+            }
+        });
+
+        document.getElementById('btn-anonymous-login').addEventListener('click', async () => {
+            try {
+                await signInAnonymously(auth);
+            } catch (err) {
+                showModal("ログイン失敗", err.message);
+            }
+        });
+
+        document.getElementById('btn-logout').addEventListener('click', () => {
+            showModal("ログアウト確認", "ログアウトしてもよろしいですか？", [
+                { label: "キャンセル", class: "bg-slate-200 text-slate-700" },
+                { 
+                    label: "ログアウト", 
+                    class: "bg-red-600 text-white", 
+                    onClick: () => {
+                        signOut(auth);
+                        showToast("ログアウトしました", "info");
+                    }
+                }
+            ]);
+        });
+
+
+        // =========================================================================
+        // FIRESTORE SYNC LISTENERS
+        // =========================================================================
+        function initFirestoreListeners(userId) {
+            // 1. History Listener (RULE 1: artifacts/{appId}/users/{userId}/fertilizer_history)
+            const historyColl = collection(db, 'artifacts', appId, 'users', userId, 'fertilizer_history');
+            onSnapshot(historyColl, (snapshot) => {
+                activeHistoryDocs = [];
+                snapshot.forEach(docSnap => {
+                    activeHistoryDocs.push({ id: docSnap.id, ...docSnap.data() });
+                });
+                
+                // Sort in JS memory (RULE 2: No complex queries in Firestore)
+                activeHistoryDocs.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+                
+                document.getElementById('history-badge').textContent = activeHistoryDocs.length;
+                document.getElementById('history-badge').classList.toggle('hidden', activeHistoryDocs.length === 0);
+                
+                renderHistoryList();
+            }, (err) => {
+                console.error("Firestore history error:", err);
             });
 
-            // Update Summary Card
-            document.getElementById('field-area-summary-badge').textContent = `${area10a.toFixed(2)}反 (${areaM2.toFixed(0)}m²) 対象`;
-            document.getElementById('summary-total-cost').textContent = Math.round(totalCost).toLocaleString('ja-JP');
-            document.getElementById('summary-cost-per-10a').textContent = '¥' + (area10a > 0 ? Math.round(totalCost / area10a) : 0).toLocaleString('ja-JP');
-            document.getElementById('summary-cost-per-m2').textContent = '¥' + (areaM2 > 0 ? (totalCost / areaM2).toFixed(1) : 0);
-            document.getElementById('summary-total-bags').textContent = totalBags.toFixed(1);
+            // 2. Custom Fertilizers Listener
+            const customColl = collection(db, 'artifacts', appId, 'users', userId, 'custom_fertilizers');
+            onSnapshot(customColl, (snapshot) => {
+                customFertilizers = [];
+                snapshot.forEach(docSnap => {
+                    customFertilizers.push({ id: docSnap.id, ...docSnap.data() });
+                });
+                renderCustomFertilizerList();
+                renderFertilizerRows(); // Refresh dropdowns in calculator
+            }, (err) => {
+                console.error("Firestore custom fertilizer error:", err);
+            });
+        }
 
-            // Update Nutrient Diagnostic Bars
-            updateProgress('n', actualN, totalReqN);
-            updateProgress('p', actualP, totalReqP);
-            updateProgress('k', actualK, totalReqK);
 
-            // Generate AI Advice Diagnostic Text
-            generateAdviceText(actualN, totalReqN, actualP, totalReqP, actualK, totalReqK);
-        };
+        // =========================================================================
+        // CALCULATOR ENGINE & AREA CONVERSION
+        // =========================================================================
+        function getAreaFactorIn10a() {
+            const val = parseFloat(document.getElementById('input-area-val').value) || 1;
+            const unit = document.getElementById('input-area-unit').value;
+            if (unit === '10a') return val;
+            if (unit === 'm2') return val / 1000;
+            if (unit === 'tsubo') return (val * 3.30578) / 1000;
+            return val;
+        }
 
-        function updateProgress(nutrientKey, actualKg, reqKg) {
-            const actualEl = document.getElementById(`actual-${nutrientKey}`);
-            const reqEl = document.getElementById(`req-${nutrientKey}`);
-            const pctEl = document.getElementById(`pct-${nutrientKey}`);
-            const barEl = document.getElementById(`bar-${nutrientKey}`);
-            const msgEl = document.getElementById(`msg-${nutrientKey}`);
+        function updateAreaConversions() {
+            const areaIn10a = getAreaFactorIn10a();
+            const m2 = areaIn10a * 1000;
+            const tsubo = m2 / 3.30578;
 
-            actualEl.textContent = actualKg.toFixed(1);
-            reqEl.textContent = reqKg.toFixed(1);
+            document.getElementById('calc-area-10a').textContent = `${areaIn10a.toFixed(2)} 10a`;
+            document.getElementById('calc-area-m2').textContent = `${Math.round(m2).toLocaleString()} m²`;
+            document.getElementById('calc-area-tsubo').textContent = `${Math.round(tsubo).toLocaleString()} 坪`;
 
-            const pct = reqKg > 0 ? Math.round((actualKg / reqKg) * 100) : 0;
-            pctEl.textContent = `${pct}%`;
+            recalculateAll();
+        }
 
-            const barWidth = Math.min(pct, 100);
-            barEl.style.width = `${barWidth}%`;
+        document.getElementById('input-area-val').addEventListener('input', updateAreaConversions);
+        document.getElementById('input-area-unit').addEventListener('change', updateAreaConversions);
 
-            if (pct < 90) {
-                barEl.className = 'h-3 rounded-full transition-all duration-300 bg-amber-500';
-                msgEl.textContent = `不足 (あと ${(reqKg - actualKg).toFixed(1)}kg 必要)`;
-                msgEl.className = 'text-[11px] text-amber-600 font-medium';
-            } else if (pct > 110) {
-                barEl.className = 'h-3 rounded-full transition-all duration-300 bg-red-500';
-                msgEl.textContent = `過剰 (+${(actualKg - reqKg).toFixed(1)}kg 超過)`;
-                msgEl.className = 'text-[11px] text-red-600 font-medium';
-            } else {
-                barEl.className = 'h-3 rounded-full transition-all duration-300 bg-emerald-500';
-                msgEl.textContent = '適量（目標値達成）';
-                msgEl.className = 'text-[11px] text-emerald-600 font-semibold';
+        // Crop Preset Selector
+        document.getElementById('select-crop-preset').addEventListener('change', (e) => {
+            const presetKey = e.target.value;
+            if (presetKey in CROP_PRESETS) {
+                const target = CROP_PRESETS[presetKey];
+                document.getElementById('target-n').value = target.n;
+                document.getElementById('target-p').value = target.p;
+                document.getElementById('target-k').value = target.k;
+                recalculateAll();
             }
+        });
+
+        document.getElementById('target-n').addEventListener('input', recalculateAll);
+        document.getElementById('target-p').addEventListener('input', recalculateAll);
+        document.getElementById('target-k').addEventListener('input', recalculateAll);
+
+
+        // Render Fertilizer Rows
+        function getAllAvailableFertilizers() {
+            return [...STANDARD_FERTILIZERS, ...customFertilizers];
         }
 
-        function generateAdviceText(actN, reqN, actP, reqP, actK, reqK) {
-            const adviceBox = document.getElementById('ai-advice-box');
-            let messages = [];
-
-            const diffN = actN - reqN;
-            const diffP = actP - reqP;
-            const diffK = actK - reqK;
-
-            if (Math.abs(diffN) < 1 && Math.abs(diffP) < 1 && Math.abs(diffK) < 1) {
-                adviceBox.className = 'p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 leading-relaxed';
-                adviceBox.innerHTML = '✨ <strong>完璧な施肥設計です！</strong> 主成分の窒素・リン酸・加里がバランス良く目標量を達成しています。';
-                return;
-            }
-
-            if (diffN < -1) messages.push(`窒素が ${(Math.abs(diffN)).toFixed(1)}kg 不足しています（硫安や尿素の追加を検討）。`);
-            else if (diffN > 1) messages.push(`窒素が ${diffN.toFixed(1)}kg 超過しています。病害虫リスクや徒長に注意。`);
-
-            if (diffP < -1) messages.push(`リン酸が ${(Math.abs(diffP)).toFixed(1)}kg 不足しています（過石の追加を推奨）。`);
-            if (diffK < -1) messages.push(`加里が ${(Math.abs(diffK)).toFixed(1)}kg 不足しています（塩加・硫加の追加を推奨）。`);
-
-            adviceBox.className = 'p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 leading-relaxed';
-            adviceBox.innerHTML = '💡 <strong>施肥アドバイス:</strong><br>' + (messages.length > 0 ? messages.join('<br>') : '投入量を微調整してください。');
-        }
-
-        // FERTILIZER SELECTION MANAGERS
-        function getAllFertilizers() {
-            return [...presetFertilizers, ...customFertilizers];
-        }
-
-        function renderSelectedFertilizers() {
-            const container = document.getElementById('selected-fertilizers-container');
+        function renderFertilizerRows() {
+            const container = document.getElementById('fertilizer-rows-container');
             container.innerHTML = '';
 
-            if (selectedFertilizers.length === 0) {
-                container.innerHTML = `
-                    <div class="text-center py-6 bg-slate-50 rounded-xl border border-dashed border-slate-300 text-slate-500 text-xs">
-                        肥料が選択されていません。「肥料を追加」ボタンから肥料を選択してください。
-                    </div>
-                `;
-                return;
-            }
+            const allFertilizers = getAllAvailableFertilizers();
 
-            const allFertilizers = getAllFertilizers();
-
-            selectedFertilizers.forEach((item, index) => {
-                const fert = allFertilizers.find(f => f.id === item.fertId);
-                if (!fert) return;
-
-                const bags = fert.weight > 0 ? (item.dosageKg / fert.weight).toFixed(1) : 0;
-                const cost = fert.weight > 0 ? Math.round((item.dosageKg / fert.weight) * fert.price) : 0;
-
+            selectedFertilizerRows.forEach((row, idx) => {
+                const fObj = allFertilizers.find(f => f.id === row.fertilizerId) || allFertilizers[0];
+                
                 const div = document.createElement('div');
-                div.className = 'bg-slate-50 p-3.5 rounded-xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3';
+                div.className = "flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 hover:border-agri-300 transition";
+                
+                // Dropdown Options
+                let optionsHtml = '';
+                allFertilizers.forEach(f => {
+                    const selected = f.id === row.fertilizerId ? 'selected' : '';
+                    optionsHtml += `<option value="${f.id}" ${selected}>${f.name} (N:${f.n}% P:${f.p}% K:${f.k}%)</option>`;
+                });
+
                 div.innerHTML = `
-                    <div class="space-y-1 flex-1">
-                        <div class="flex items-center space-x-2">
-                            <span class="font-bold text-sm text-slate-800">${fert.name}</span>
-                            <span class="text-[10px] bg-slate-200 text-slate-700 font-semibold px-2 py-0.5 rounded-md">N:${fert.n} P:${fert.p} K:${fert.k}</span>
-                        </div>
-                        <div class="text-xs text-slate-500">
-                            規格: ${fert.weight}kg/袋 (¥${fert.price.toLocaleString()}) → 約 ${bags} 袋 (¥${cost.toLocaleString()})
-                        </div>
+                    <div class="flex-1 w-full sm:w-auto">
+                        <select data-row-id="${row.id}" class="select-fertilizer-type w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-800 bg-white focus:ring-2 focus:ring-agri-500">
+                            ${optionsHtml}
+                        </select>
                     </div>
 
-                    <div class="flex items-center space-x-2">
-                        <div class="flex items-center space-x-1">
-                            <span class="text-xs text-slate-600 font-medium">投入量:</span>
-                            <input type="number" min="0" step="0.5" value="${item.dosageKg}" oninput="updateFertilizerDosage(${index}, this.value)"
-                                   class="w-24 px-2 py-1 text-sm font-bold text-slate-800 border border-slate-300 rounded-lg bg-white text-right focus:ring-2 focus:ring-agri-500">
-                            <span class="text-xs text-slate-500">kg</span>
+                    <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-xs text-slate-500 font-medium">10aあたり:</span>
+                            <input type="number" data-row-id="${row.id}" value="${row.amountPer10a}" min="0" step="1" class="input-fertilizer-amount w-20 px-2 py-1.5 border border-slate-300 rounded-lg text-xs font-mono font-bold text-slate-800 text-right focus:ring-2 focus:ring-agri-500">
+                            <span class="text-xs text-slate-600 font-bold">kg</span>
                         </div>
-                        <button onclick="removeSelectedFertilizer(${index})" class="text-slate-400 hover:text-red-600 p-1 transition" title="削除">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+
+                        <div class="text-right min-w-[100px] font-mono">
+                            <span class="row-total-weight block text-xs font-bold text-agri-800">0.0 kg</span>
+                            <span class="row-total-bags text-[10px] text-slate-500 block">0 袋</span>
+                        </div>
+
+                        <button data-row-id="${row.id}" class="btn-delete-row p-1.5 text-slate-400 hover:text-red-500 transition rounded-lg hover:bg-red-50">
+                            <i class="fa-solid fa-trash-can text-sm"></i>
                         </button>
                     </div>
                 `;
+
                 container.appendChild(div);
             });
-        }
 
-        window.updateFertilizerDosage = function(index, value) {
-            selectedFertilizers[index].dosageKg = parseFloat(value) || 0;
-            calculateAll();
-        };
-
-        window.removeSelectedFertilizer = function(index) {
-            selectedFertilizers.splice(index, 1);
-            renderSelectedFertilizers();
-            calculateAll();
-        };
-
-        window.clearSelectedFertilizers = function() {
-            selectedFertilizers = [];
-            renderSelectedFertilizers();
-            calculateAll();
-        };
-
-        // AUTO OPTIMIZATION HELPER (Nitrogen Target Auto-Balance)
-        window.autoOptimizeFertilizers = function() {
-            if (selectedFertilizers.length === 0) {
-                showToast("まず肥料を1つ以上追加してください。", "warning");
-                return;
-            }
-
-            const area10a = getFieldAreaInM2() / 1000;
-            const targetN10a = parseFloat(document.getElementById('target-n').value) || 0;
-            const targetP10a = parseFloat(document.getElementById('target-p').value) || 0;
-            const targetK10a = parseFloat(document.getElementById('target-k').value) || 0;
-
-            const totalReqN = targetN10a * area10a;
-            const totalReqP = targetP10a * area10a;
-            const totalReqK = targetK10a * area10a;
-
-            const allFertilizers = getAllFertilizers();
-
-            // Find primary compound fertilizer in selection (or highest N)
-            const primaryItem = selectedFertilizers[0];
-            const primaryFert = allFertilizers.find(f => f.id === primaryItem.fertId);
-
-            if (primaryFert && primaryFert.n > 0) {
-                // Calculate dosage of primary fertilizer needed for Nitrogen target
-                const reqKg = (totalReqN / (primaryFert.n / 100));
-                primaryItem.dosageKg = parseFloat(reqKg.toFixed(1));
-
-                // Check remaining Phosphorus deficit
-                const currentP = primaryItem.dosageKg * (primaryFert.p / 100);
-                const deficitP = totalReqP - currentP;
-
-                // If Phosphorus deficit exists and superphosphate is available, adjust/add it
-                if (deficitP > 1) {
-                    let pFertItem = selectedFertilizers.find(i => {
-                        const f = allFertilizers.find(x => x.id === i.fertId);
-                        return f && f.p > 10 && f.n === 0; // Superphosphate
-                    });
-
-                    if (pFertItem) {
-                        const pFert = allFertilizers.find(x => x.id === pFertItem.fertId);
-                        pFertItem.dosageKg = parseFloat((deficitP / (pFert.p / 100)).toFixed(1));
+            // Bind Event Listeners
+            document.querySelectorAll('.select-fertilizer-type').forEach(sel => {
+                sel.addEventListener('change', (e) => {
+                    const rowId = e.target.getAttribute('data-row-id');
+                    const row = selectedFertilizerRows.find(r => r.id === rowId);
+                    if (row) {
+                        row.fertilizerId = e.target.value;
+                        recalculateAll();
                     }
-                }
-            }
-
-            renderSelectedFertilizers();
-            calculateAll();
-            showToast("目標窒素量に合わせて施肥量を自動補正しました！", "success");
-        };
-
-        // MODAL PICKER HANDLERS
-        window.openFertilizerPickerModal = function() {
-            const listContainer = document.getElementById('picker-fertilizer-list');
-            listContainer.innerHTML = '';
-
-            const allFertilizers = getAllFertilizers();
-
-            allFertilizers.forEach(fert => {
-                const isSelected = selectedFertilizers.some(s => s.fertId === fert.id);
-
-                const btn = document.createElement('button');
-                btn.className = `w-full text-left p-3 rounded-xl border flex items-center justify-between transition ${isSelected ? 'bg-agri-50 border-agri-300 text-agri-900' : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-800'}`;
-                btn.onclick = () => {
-                    if (!isSelected) {
-                        selectedFertilizers.push({ fertId: fert.id, dosageKg: fert.weight || 20 });
-                        renderSelectedFertilizers();
-                        calculateAll();
-                        closeFertilizerPickerModal();
-                        showToast(`${fert.name} を計算機に追加しました`, "info");
-                    }
-                };
-
-                btn.innerHTML = `
-                    <div>
-                        <div class="font-bold text-sm">${fert.name}</div>
-                        <div class="text-xs text-slate-500">N: ${fert.n}% | P: ${fert.p}% | K: ${fert.k}% (${fert.weight}kg/袋 - ¥${fert.price.toLocaleString()})</div>
-                    </div>
-                    ${isSelected ? '<span class="text-xs font-bold text-agri-700 bg-agri-100 px-2.5 py-1 rounded-md">追加済み</span>' : '<span class="text-xs font-bold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-md">選択</span>'}
-                `;
-                listContainer.appendChild(btn);
-            });
-
-            document.getElementById('fertilizer-picker-modal').classList.remove('hidden');
-        };
-
-        window.closeFertilizerPickerModal = function() {
-            document.getElementById('fertilizer-picker-modal').classList.add('hidden');
-        };
-
-        // CUSTOM FERTILIZER MODAL & DB MANAGEMENT
-        window.openCustomFertilizerModal = function() {
-            document.getElementById('custom-fertilizer-modal').classList.remove('hidden');
-        };
-
-        window.closeCustomFertilizerModal = function() {
-            document.getElementById('custom-fertilizer-modal').classList.add('hidden');
-        };
-
-        window.saveCustomFertilizer = function() {
-            const name = document.getElementById('cust-fert-name').value.trim();
-            const n = parseFloat(document.getElementById('cust-fert-n').value) || 0;
-            const p = parseFloat(document.getElementById('cust-fert-p').value) || 0;
-            const k = parseFloat(document.getElementById('cust-fert-k').value) || 0;
-            const weight = parseFloat(document.getElementById('cust-fert-weight').value) || 20;
-            const price = parseFloat(document.getElementById('cust-fert-price').value) || 0;
-
-            if (!name) {
-                showToast("肥料名を入力してください。", "warning");
-                return;
-            }
-
-            const newFert = {
-                id: 'cust_' + Date.now(),
-                name, n, p, k, weight, price,
-                isPreset: false
-            };
-
-            customFertilizers.push(newFert);
-            localStorage.setItem('agri_custom_fert_list', JSON.stringify(customFertilizers));
-
-            renderFertilizerDbTable();
-            closeCustomFertilizerModal();
-            showToast("新しいカスタム肥料をライブラリに登録しました！", "success");
-        };
-
-        window.deleteCustomFertilizer = function(id) {
-            customFertilizers = customFertilizers.filter(f => f.id !== id);
-            localStorage.setItem('agri_custom_fert_list', JSON.stringify(customFertilizers));
-            selectedFertilizers = selectedFertilizers.filter(s => s.fertId !== id);
-            renderSelectedFertilizers();
-            renderFertilizerDbTable();
-            calculateAll();
-            showToast("肥料をライブラリから削除しました。", "info");
-        };
-
-        function renderFertilizerDbTable() {
-            const tbody = document.getElementById('fertilizer-db-table-body');
-            tbody.innerHTML = '';
-
-            const allFertilizers = getAllFertilizers();
-
-            allFertilizers.forEach(fert => {
-                const tr = document.createElement('tr');
-                tr.className = 'hover:bg-slate-50 transition';
-                tr.innerHTML = `
-                    <td class="px-4 py-3 font-bold text-slate-800">${fert.name}</td>
-                    <td class="px-3 py-3 text-center text-blue-800 font-semibold bg-blue-50/40">${fert.n}%</td>
-                    <td class="px-3 py-3 text-center text-amber-800 font-semibold bg-amber-50/40">${fert.p}%</td>
-                    <td class="px-3 py-3 text-center text-emerald-800 font-semibold bg-emerald-50/40">${fert.k}%</td>
-                    <td class="px-4 py-3 text-right text-slate-600">${fert.weight} kg</td>
-                    <td class="px-4 py-3 text-right font-medium text-slate-800">¥${fert.price.toLocaleString()}</td>
-                    <td class="px-4 py-3 text-center">
-                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${fert.isPreset ? 'bg-slate-100 text-slate-600' : 'bg-agri-100 text-agri-800'}">
-                            ${fert.isPreset ? '標準' : 'カスタム'}
-                        </span>
-                    </td>
-                    <td class="px-3 py-3 text-center">
-                        ${!fert.isPreset ? `
-                            <button onclick="deleteCustomFertilizer('${fert.id}')" class="text-slate-400 hover:text-red-600 p-1">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                            </button>
-                        ` : '<span class="text-xs text-slate-300">-</span>'}
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
-        }
-
-        // HISTORY MANAGEMENT & FIRESTORE STORAGE
-        window.saveCalculationRecord = async function() {
-            const cropPresetSelect = document.getElementById('crop-preset-select');
-            const cropName = cropPresetSelect.options[cropPresetSelect.selectedIndex].text.split('（')[0];
-            const areaM2 = getFieldAreaInM2();
-            const notes = document.getElementById('calc-notes').value.trim();
-
-            const record = {
-                id: 'rec_' + Date.now(),
-                createdAt: new Date().toISOString(),
-                cropName,
-                areaM2,
-                area10a: areaM2 / 1000,
-                targetN: parseFloat(document.getElementById('target-n').value) || 0,
-                targetP: parseFloat(document.getElementById('target-p').value) || 0,
-                targetK: parseFloat(document.getElementById('target-k').value) || 0,
-                selectedFertilizers: [...selectedFertilizers],
-                notes,
-                totalCost: parseFloat(document.getElementById('summary-total-cost').textContent.replace(/,/g, '')) || 0
-            };
-
-            // Save locally first
-            historyRecords.unshift(record);
-            localStorage.setItem('agri_calc_history', JSON.stringify(historyRecords));
-
-            // Sync to Firestore if authenticated & connected (Rule 1 compliance)
-            if (currentUser && db) {
-                try {
-                    const userId = currentUser.uid;
-                    const docRef = doc(db, 'artifacts', appId, 'users', userId, 'fertilizer_history', record.id);
-                    await setDoc(docRef, record);
-                    showToast("Cloud (Firestore) に施肥履歴を保存しました！", "success");
-                } catch (err) {
-                    console.error("Firestore save error:", err);
-                    showToast("ローカルに保存されました (クラウド同期失敗)", "warning");
-                }
-            } else {
-                showToast("ローカル（この端末）に履歴を保存しました。", "success");
-            }
-
-            renderHistoryList();
-            updateHistoryBadge();
-        };
-
-        async function loadHistoryRecords() {
-            const localData = localStorage.getItem('agri_calc_history');
-            if (localData) {
-                historyRecords = JSON.parse(localData);
-            }
-            renderHistoryList();
-            updateHistoryBadge();
-        }
-
-        async function syncHistoryFromFirestore() {
-            if (!currentUser || !db) return;
-            try {
-                const userId = currentUser.uid;
-                const colRef = collection(db, 'artifacts', appId, 'users', userId, 'fertilizer_history');
-                
-                // Rule 2 compliant: Fetch simple collection and sort in JS
-                const snapshot = await getDocs(colRef);
-                const remoteRecords = [];
-                snapshot.forEach(docSnap => {
-                    remoteRecords.push(docSnap.data());
                 });
+            });
 
-                if (remoteRecords.length > 0) {
-                    remoteRecords.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-                    historyRecords = remoteRecords;
-                    localStorage.setItem('agri_calc_history', JSON.stringify(historyRecords));
-                    renderHistoryList();
-                    updateHistoryBadge();
+            document.querySelectorAll('.input-fertilizer-amount').forEach(inp => {
+                inp.addEventListener('input', (e) => {
+                    const rowId = e.target.getAttribute('data-row-id');
+                    const row = selectedFertilizerRows.find(r => r.id === rowId);
+                    if (row) {
+                        row.amountPer10a = parseFloat(e.target.value) || 0;
+                        recalculateAll();
+                    }
+                });
+            });
+
+            document.querySelectorAll('.btn-delete-row').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const rowId = e.currentTarget.getAttribute('data-row-id');
+                    if (selectedFertilizerRows.length <= 1) {
+                        showToast("最低1つの肥料項目が必要です", "info");
+                        return;
+                    }
+                    selectedFertilizerRows = selectedFertilizerRows.filter(r => r.id !== rowId);
+                    renderFertilizerRows();
+                    recalculateAll();
+                });
+            });
+
+            recalculateAll();
+        }
+
+        document.getElementById('btn-add-fertilizer').addEventListener('click', () => {
+            const allFertilizers = getAllAvailableFertilizers();
+            selectedFertilizerRows.push({
+                id: 'row_' + Date.now(),
+                fertilizerId: allFertilizers[0].id,
+                amountPer10a: 20
+            });
+            renderFertilizerRows();
+        });
+
+
+        // =========================================================================
+        // RECALCULATION & AUTO-OPTIMIZER SOLVER
+        // =========================================================================
+        function recalculateAll() {
+            const areaIn10a = getAreaFactorIn10a();
+            const targetN = parseFloat(document.getElementById('target-n').value) || 0;
+            const targetP = parseFloat(document.getElementById('target-p').value) || 0;
+            const targetK = parseFloat(document.getElementById('target-k').value) || 0;
+
+            document.getElementById('total-target-n').textContent = (targetN * areaIn10a).toFixed(1);
+            document.getElementById('total-target-p').textContent = (targetP * areaIn10a).toFixed(1);
+            document.getElementById('total-target-k').textContent = (targetK * areaIn10a).toFixed(1);
+
+            const allFertilizers = getAllAvailableFertilizers();
+
+            let suppliedN = 0;
+            let suppliedP = 0;
+            let suppliedK = 0;
+            let totalWeightAllField = 0;
+            let totalBagsAllField = 0;
+
+            selectedFertilizerRows.forEach(row => {
+                const fObj = allFertilizers.find(f => f.id === row.fertilizerId) || allFertilizers[0];
+                const amtPer10a = row.amountPer10a || 0;
+
+                suppliedN += (amtPer10a * fObj.n) / 100;
+                suppliedP += (amtPer10a * fObj.p) / 100;
+                suppliedK += (amtPer10a * fObj.k) / 100;
+
+                const rowTotalWeight = amtPer10a * areaIn10a;
+                const rowBags = rowTotalWeight / (fObj.bagWeight || 20);
+
+                totalWeightAllField += rowTotalWeight;
+                totalBagsAllField += rowBags;
+
+                // Update Row DOM text
+                const rowElem = document.querySelector(`select[data-row-id="${row.id}"]`)?.closest('.flex-col');
+                if (rowElem) {
+                    const weightSpan = rowElem.querySelector('.row-total-weight');
+                    const bagsSpan = rowElem.querySelector('.row-total-bags');
+                    if (weightSpan) weightSpan.textContent = `${rowTotalWeight.toFixed(1)} kg`;
+                    if (bagsSpan) bagsSpan.textContent = `（約 ${rowBags.toFixed(1)} 袋）`;
                 }
-            } catch (err) {
-                console.warn("Error fetching Firestore history:", err);
-            }
-        }
+            });
 
-        function updateHistoryBadge() {
-            const badge = document.getElementById('history-badge');
-            if (historyRecords.length > 0) {
-                badge.textContent = historyRecords.length;
-                badge.classList.remove('hidden');
+            // Update Gauges
+            updateGauge('n', suppliedN, targetN, '窒素');
+            updateGauge('p', suppliedP, targetP, '燐酸');
+            updateGauge('k', suppliedK, targetK, '加里');
+
+            // Total summary
+            document.getElementById('total-fertilizer-weight').textContent = `${totalWeightAllField.toFixed(1)} kg`;
+            document.getElementById('total-bags-estimate').textContent = `（約 ${Math.ceil(totalBagsAllField)} 袋）`;
+
+            // Diagnostic message
+            const ratioN = targetN > 0 ? (suppliedN / targetN) : 1;
+            const ratioP = targetP > 0 ? (suppliedP / targetP) : 1;
+            const ratioK = targetK > 0 ? (suppliedK / targetK) : 1;
+
+            const summaryElem = document.getElementById('diagnostic-summary');
+            if (Math.abs(ratioN - 1) < 0.1 && Math.abs(ratioP - 1) < 0.1 && Math.abs(ratioK - 1) < 0.1) {
+                summaryElem.textContent = "✅ N・P・Kともに目標値と理想的に一致しています！優れたバランスです。";
+                summaryElem.className = "text-xs text-agri-700 font-bold mt-0.5";
             } else {
-                badge.classList.add('hidden');
+                let msg = [];
+                if (ratioN < 0.9) msg.push("窒素不足");
+                if (ratioN > 1.1) msg.push("窒素過剰");
+                if (ratioP < 0.9) msg.push("燐酸不足");
+                if (ratioP > 1.1) msg.push("燐酸過剰");
+                if (ratioK < 0.9) msg.push("加里不足");
+                if (ratioK > 1.1) msg.push("加里過剰");
+
+                summaryElem.textContent = `⚠️ 調整が必要: ${msg.join("・")}です。「⚡ 自動量調整」ボタンで推奨投入量を算出できます。`;
+                summaryElem.className = "text-xs text-amber-700 font-bold mt-0.5";
             }
         }
 
-        window.renderHistoryList = function() {
-            const container = document.getElementById('history-list-container');
-            const searchQuery = (document.getElementById('history-search-input')?.value || '').toLowerCase();
-            container.innerHTML = '';
+        function updateGauge(key, val, target, label) {
+            const pct = target > 0 ? Math.min(Math.round((val / target) * 100), 200) : 0;
+            const textElem = document.getElementById(`gauge-${key}-text`);
+            const barElem = document.getElementById(`gauge-${key}-bar`);
+            const badgeElem = document.getElementById(`gauge-${key}-badge`);
 
-            const filtered = historyRecords.filter(r => 
-                r.cropName.toLowerCase().includes(searchQuery) || 
-                (r.notes && r.notes.toLowerCase().includes(searchQuery))
-            );
+            textElem.textContent = `${val.toFixed(1)} / ${target.toFixed(1)} kg/10a (${pct}%)`;
+            barElem.style.width = `${Math.min(pct, 100)}%`;
+
+            if (pct < 90) {
+                badgeElem.textContent = "不足";
+                badgeElem.className = "text-right text-[11px] font-bold text-amber-600";
+                barElem.className = "h-full bg-amber-500 transition-all duration-300 rounded-full";
+            } else if (pct <= 110) {
+                badgeElem.textContent = "適正 (Optimal)";
+                badgeElem.className = "text-right text-[11px] font-bold text-agri-600";
+                barElem.className = "h-full bg-agri-500 transition-all duration-300 rounded-full";
+            } else {
+                badgeElem.textContent = "過剰 (Excess)";
+                badgeElem.className = "text-right text-[11px] font-bold text-red-600";
+                barElem.className = "h-full bg-red-500 transition-all duration-300 rounded-full";
+            }
+        }
+
+
+        // AUTO-OPTIMIZER SOLVER (Coordinate Descent Non-Negative Solver)
+        document.getElementById('btn-auto-optimize').addEventListener('click', () => {
+            const targetN = parseFloat(document.getElementById('target-n').value) || 0;
+            const targetP = parseFloat(document.getElementById('target-p').value) || 0;
+            const targetK = parseFloat(document.getElementById('target-k').value) || 0;
+
+            const allFertilizers = getAllAvailableFertilizers();
+            const activeRows = selectedFertilizerRows.map(r => {
+                return { rowRef: r, fObj: allFertilizers.find(f => f.id === r.fertilizerId) };
+            });
+
+            if (activeRows.length === 0) return;
+
+            // Coordinate descent heuristic to find non-negative x_i minimizing squared nutrient error
+            let x = activeRows.map(() => 10); // initial guess
+
+            for (let iter = 0; iter < 100; iter++) {
+                for (let i = 0; i < activeRows.length; i++) {
+                    const fi = activeRows[i].fObj;
+                    const denom = (fi.n * fi.n + fi.p * fi.p + fi.k * fi.k) / 10000;
+                    if (denom === 0) continue;
+
+                    // Calculate current totals excluding item i
+                    let sumN = 0, sumP = 0, sumK = 0;
+                    for (let j = 0; j < activeRows.length; j++) {
+                        if (i === j) continue;
+                        const fj = activeRows[j].fObj;
+                        sumN += (x[j] * fj.n) / 100;
+                        sumP += (x[j] * fj.p) / 100;
+                        sumK += (x[j] * fj.k) / 100;
+                    }
+
+                    const remN = targetN - sumN;
+                    const remP = targetP - sumP;
+                    const remK = targetK - sumK;
+
+                    const num = (fi.n * remN + fi.p * remP + fi.k * remK) / 100;
+                    const optimalX = num / denom;
+
+                    x[i] = Math.max(0, optimalX);
+                }
+            }
+
+            // Apply optimal dosages
+            activeRows.forEach((item, idx) => {
+                item.rowRef.amountPer10a = Math.round(x[idx] * 10) / 10;
+            });
+
+            renderFertilizerRows();
+            showToast("⚡ 目標成分に合わせて投下量を自動計算しました", "success");
+        });
+
+
+        // =========================================================================
+        // SAVE PLAN TO FIRESTORE
+        // =========================================================================
+        document.getElementById('btn-save-plan').addEventListener('click', async () => {
+            if (!currentUser) {
+                showToast("ログインが必要です", "error");
+                return;
+            }
+
+            const fieldName = document.getElementById('input-field-name').value || "無題の圃場";
+            const areaVal = parseFloat(document.getElementById('input-area-val').value) || 10;
+            const areaUnit = document.getElementById('input-area-unit').value;
+            const targetN = parseFloat(document.getElementById('target-n').value) || 0;
+            const targetP = parseFloat(document.getElementById('target-p').value) || 0;
+            const targetK = parseFloat(document.getElementById('target-k').value) || 0;
+
+            const allFertilizers = getAllAvailableFertilizers();
+            const fertilizerDetails = selectedFertilizerRows.map(r => {
+                const fObj = allFertilizers.find(f => f.id === r.fertilizerId);
+                return {
+                    name: fObj ? fObj.name : '不明',
+                    amountPer10a: r.amountPer10a,
+                    n: fObj ? fObj.n : 0,
+                    p: fObj ? fObj.p : 0,
+                    k: fObj ? fObj.k : 0
+                };
+            });
+
+            const planData = {
+                fieldName,
+                areaVal,
+                areaUnit,
+                targetN,
+                targetP,
+                targetK,
+                fertilizers: fertilizerDetails,
+                createdAt: Date.now(),
+                dateStr: new Date().toLocaleString('ja-JP')
+            };
+
+            try {
+                // Save directly under user path (RULE 1)
+                const historyColl = collection(db, 'artifacts', appId, 'users', currentUser.uid, 'fertilizer_history');
+                await addDoc(historyColl, planData);
+                showToast("💾 施肥設計を履歴へ保存しました！", "success");
+            } catch (err) {
+                console.error("Save plan error:", err);
+                showToast("保存に失敗しました: " + err.message, "error");
+            }
+        });
+
+
+        // =========================================================================
+        // HISTORY LIST VIEWER & LOAD FUNCTIONALITY
+        // =========================================================================
+        function renderHistoryList() {
+            const container = document.getElementById('history-list-container');
+            const searchVal = (document.getElementById('history-search').value || '').toLowerCase();
+
+            const filtered = activeHistoryDocs.filter(docItem => {
+                const text = `${docItem.fieldName} ${docItem.fertilizers?.map(f => f.name).join(' ')}`.toLowerCase();
+                return text.includes(searchVal);
+            });
 
             if (filtered.length === 0) {
                 container.innerHTML = `
-                    <div class="col-span-full text-center py-12 text-slate-400 text-sm">
-                        保存された施肥履歴はありません。
+                    <div class="text-center py-10 text-slate-400 text-xs">
+                        <i class="fa-solid fa-box-open text-3xl mb-2 block text-slate-300"></i>
+                        保存された施肥設計履歴はありません
                     </div>
                 `;
                 return;
             }
 
-            const allFertilizers = getAllFertilizers();
-
+            container.innerHTML = '';
             filtered.forEach(item => {
-                const dateStr = new Date(item.createdAt).toLocaleString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
-
                 const card = document.createElement('div');
-                card.className = 'bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3 flex flex-col justify-between hover:shadow-md transition';
+                card.className = "bg-slate-50 rounded-xl p-4 border border-slate-200 hover:border-agri-400 transition space-y-3";
 
-                const fertNames = item.selectedFertilizers.map(sf => {
-                    const f = allFertilizers.find(x => x.id === sf.fertId);
-                    return f ? `${f.name} (${sf.dosageKg}kg)` : '';
-                }).filter(Boolean).join(', ');
+                const fertilizersSummary = item.fertilizers?.map(f => `${f.name} (${f.amountPer10a}kg/10a)`).join(', ') || '';
 
                 card.innerHTML = `
-                    <div class="space-y-2">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <span class="text-xs font-bold text-agri-700 bg-agri-50 px-2.5 py-0.5 rounded-full">${item.area10a.toFixed(1)}反 (${item.areaM2.toFixed(0)}m²)</span>
-                                <h3 class="text-base font-bold text-slate-900 mt-1">${item.cropName}</h3>
-                            </div>
-                            <span class="text-xs text-slate-400 font-mono">${dateStr}</span>
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-2">
+                        <div>
+                            <h3 class="font-bold text-slate-800 text-sm">${item.fieldName}</h3>
+                            <span class="text-[11px] text-slate-500 font-mono">${item.dateStr || ''} | 面積: ${item.areaVal} ${item.areaUnit}</span>
                         </div>
-
-                        <div class="text-xs text-slate-600 space-y-1">
-                            <div><strong>目標施肥量 (10a):</strong> N:${item.targetN} P:${item.targetP} K:${item.targetK} kg</div>
-                            <div class="text-slate-500 truncate"><strong>使用肥料:</strong> ${fertNames || 'なし'}</div>
-                            ${item.notes ? `<div class="bg-slate-50 p-2 rounded-lg italic text-slate-600">"${item.notes}"</div>` : ''}
+                        <div class="flex items-center gap-2">
+                            <button data-id="${item.id}" class="btn-load-history px-3 py-1.5 bg-agri-600 hover:bg-agri-700 text-white font-bold rounded-lg text-xs transition flex items-center gap-1">
+                                <i class="fa-solid fa-download"></i> ロード
+                            </button>
+                            <button data-id="${item.id}" class="btn-delete-history px-2 py-1.5 text-slate-400 hover:text-red-600 text-xs transition">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
                         </div>
                     </div>
 
-                    <div class="pt-3 border-t border-slate-100 flex items-center justify-between">
-                        <span class="text-base font-extrabold text-slate-900">¥${item.totalCost.toLocaleString()}</span>
-                        <div class="flex items-center space-x-2">
-                            <button onclick="loadHistoryToCalculator('${item.id}')" class="text-xs font-bold text-agri-700 hover:bg-agri-50 px-3 py-1.5 rounded-lg border border-agri-200 transition">
-                                読み込む
-                            </button>
-                            <button onclick="deleteHistoryRecord('${item.id}')" class="text-slate-400 hover:text-red-600 p-1.5 transition" title="削除">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                            </button>
-                        </div>
+                    <div class="grid grid-cols-3 gap-2 text-xs font-mono bg-white p-2 rounded-lg border border-slate-100">
+                        <div><span class="text-slate-400 block text-[10px]">目標 窒素(N)</span><span class="font-bold text-blue-900">${item.targetN} kg</span></div>
+                        <div><span class="text-slate-400 block text-[10px]">目標 燐酸(P)</span><span class="font-bold text-amber-900">${item.targetP} kg</span></div>
+                        <div><span class="text-slate-400 block text-[10px]">目標 加里(K)</span><span class="font-bold text-purple-900">${item.targetK} kg</span></div>
+                    </div>
+
+                    <div class="text-xs text-slate-600">
+                        <span class="font-bold text-slate-700">配合肥料:</span> ${fertilizersSummary}
                     </div>
                 `;
+
                 container.appendChild(card);
             });
-        };
 
-        window.loadHistoryToCalculator = function(id) {
-            const item = historyRecords.find(r => r.id === id);
-            if (!item) return;
+            // Bind history item events
+            document.querySelectorAll('.btn-load-history').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const docId = e.currentTarget.getAttribute('data-id');
+                    const targetDoc = activeHistoryDocs.find(d => d.id === docId);
+                    if (targetDoc) {
+                        loadHistoryIntoCalculator(targetDoc);
+                    }
+                });
+            });
 
-            document.getElementById('field-size-input').value = item.area10a;
-            document.getElementById('field-unit-select').value = '10a';
-            document.getElementById('target-n').value = item.targetN;
-            document.getElementById('target-p').value = item.targetP;
-            document.getElementById('target-k').value = item.targetK;
-            document.getElementById('calc-notes').value = item.notes || '';
+            document.querySelectorAll('.btn-delete-history').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const docId = e.currentTarget.getAttribute('data-id');
+                    showModal("履歴削除", "この計算履歴を削除してもよろしいですか？", [
+                        { label: "キャンセル", class: "bg-slate-200 text-slate-700" },
+                        { 
+                            label: "削除", 
+                            class: "bg-red-600 text-white", 
+                            onClick: async () => {
+                                const docRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'fertilizer_history', docId);
+                                await deleteDoc(docRef);
+                                showToast("履歴を削除しました", "info");
+                            }
+                        }
+                    ]);
+                });
+            });
+        }
 
-            selectedFertilizers = [...item.selectedFertilizers];
-            renderSelectedFertilizers();
-            calculateAll();
-            switchTab('calc');
-            showToast("施肥履歴データを計算機に読み込みました！", "info");
-        };
+        document.getElementById('history-search').addEventListener('input', renderHistoryList);
 
-        window.deleteHistoryRecord = async function(id) {
-            historyRecords = historyRecords.filter(r => r.id !== id);
-            localStorage.setItem('agri_calc_history', JSON.stringify(historyRecords));
+        function loadHistoryIntoCalculator(docData) {
+            document.getElementById('input-field-name').value = docData.fieldName || '';
+            document.getElementById('input-area-val').value = docData.areaVal || 10;
+            document.getElementById('input-area-unit').value = docData.areaUnit || '10a';
+            document.getElementById('target-n').value = docData.targetN || 0;
+            document.getElementById('target-p').value = docData.targetP || 0;
+            document.getElementById('target-k').value = docData.targetK || 0;
 
-            if (currentUser && db) {
-                try {
-                    const userId = currentUser.uid;
-                    await deleteDoc(doc(db, 'artifacts', appId, 'users', userId, 'fertilizer_history', id));
-                } catch (e) {
-                    console.warn("Firestore delete error:", e);
-                }
+            const allFertilizers = getAllAvailableFertilizers();
+
+            if (docData.fertilizers && docData.fertilizers.length > 0) {
+                selectedFertilizerRows = docData.fertilizers.map((f, i) => {
+                    // Match fertilizer by name or default
+                    const matched = allFertilizers.find(af => af.name === f.name) || allFertilizers[0];
+                    return {
+                        id: 'row_' + Date.now() + '_' + i,
+                        fertilizerId: matched.id,
+                        amountPer10a: f.amountPer10a
+                    };
+                });
             }
 
-            renderHistoryList();
-            updateHistoryBadge();
-            showToast("履歴を削除しました。", "info");
-        };
+            renderFertilizerRows();
+            updateAreaConversions();
 
-        // EXPORT HISTORY TO CSV (WITH BOM FOR JAPANESE EXCEL)
-        window.exportHistoryCSV = function() {
-            if (historyRecords.length === 0) {
-                showToast("出力する計算履歴がありません。", "warning");
+            // Switch to Calculator Tab
+            switchTab('calculator');
+            showToast("📥 計算機に施肥設計をロードしました！", "success");
+        }
+
+
+        // CSV EXPORT FUNCTIONALITY (UTF-8 BOM for Japanese Excel Support)
+        document.getElementById('btn-export-csv').addEventListener('click', () => {
+            if (activeHistoryDocs.length === 0) {
+                showToast("エクスポート可能な履歴がありません", "info");
                 return;
             }
 
-            let csvContent = "\uFEFF日時,作物名,面積(10a),目標N(kg),目標P(kg),目標K(kg),概算費用(円),備考\n";
-            historyRecords.forEach(r => {
-                const date = new Date(r.createdAt).toLocaleDateString('ja-JP');
-                csvContent += `"${date}","${r.cropName}",${r.area10a},${r.targetN},${r.targetP},${r.targetK},${r.totalCost},"${(r.notes || '').replace(/"/g, '""')}"\n`;
+            let csvContent = "\uFEFF"; // UTF-8 BOM
+            csvContent += "日時,圃場名,面積数値,面積単位,目標N(kg/10a),目標P(kg/10a),目標K(kg/10a),使用肥料内訳\n";
+
+            activeHistoryDocs.forEach(item => {
+                const fertilizersText = item.fertilizers?.map(f => `${f.name}:${f.amountPer10a}kg`).join(';') || '';
+                const row = [
+                    `"${item.dateStr || ''}"`,
+                    `"${item.fieldName || ''}"`,
+                    item.areaVal,
+                    item.areaUnit,
+                    item.targetN,
+                    item.targetP,
+                    item.targetK,
+                    `"${fertilizersText}"`
+                ].join(',');
+                csvContent += row + "\n";
             });
 
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `肥料計算履歴_${new Date().toISOString().slice(0, 10)}.csv`;
-            a.click();
-            URL.revokeObjectURL(url);
-            showToast("CSVファイルをダウンロードしました！", "success");
-        };
+            const link = document.createElement('a');
+            link.setAttribute('href', url);
+            link.setAttribute('download', `施肥設計履歴_${new Date().toISOString().slice(0,10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
 
-        // TAB SWITCHING NAVIGATION
-        window.switchTab = function(tabKey) {
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-            document.querySelectorAll('.tab-btn').forEach(el => {
-                el.className = 'tab-btn flex items-center space-x-2 px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 rounded-lg hover:bg-slate-100 transition';
+            showToast("📊 CSVファイルをダウンロードしました", "success");
+        });
+
+
+        // =========================================================================
+        // CUSTOM FERTILIZER DATABASE MANAGER
+        // =========================================================================
+        document.getElementById('form-custom-fertilizer').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!currentUser) return;
+
+            const name = document.getElementById('custom-f-name').value;
+            const n = parseFloat(document.getElementById('custom-f-n').value) || 0;
+            const p = parseFloat(document.getElementById('custom-f-p').value) || 0;
+            const k = parseFloat(document.getElementById('custom-f-k').value) || 0;
+            const bagWeight = parseFloat(document.getElementById('custom-f-bag').value) || 20;
+            const note = document.getElementById('custom-f-note').value || '';
+
+            const customData = { name, n, p, k, bagWeight, note, createdAt: Date.now() };
+
+            try {
+                const customColl = collection(db, 'artifacts', appId, 'users', currentUser.uid, 'custom_fertilizers');
+                await addDoc(customColl, customData);
+                
+                document.getElementById('form-custom-fertilizer').reset();
+                showToast("🧪 カスタム肥料を登録しました！", "success");
+            } catch (err) {
+                console.error("Custom fertilizer save error:", err);
+                showToast("保存に失敗しました: " + err.message, "error");
+            }
+        });
+
+        function renderCustomFertilizerList() {
+            const container = document.getElementById('custom-f-list');
+            document.getElementById('custom-f-count').textContent = `${customFertilizers.length} 件登録`;
+
+            if (customFertilizers.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-2 text-center py-8 text-slate-400 text-xs">
+                        登録されたカスタム肥料はありません
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = '';
+            customFertilizers.forEach(cf => {
+                const card = document.createElement('div');
+                card.className = "p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-3";
+
+                card.innerHTML = `
+                    <div>
+                        <h4 class="font-bold text-slate-800 text-xs">${cf.name}</h4>
+                        <div class="flex gap-2 text-[10px] font-mono mt-1">
+                            <span class="text-blue-900 font-bold">N: ${cf.n}%</span>
+                            <span class="text-amber-900 font-bold">P: ${cf.p}%</span>
+                            <span class="text-purple-900 font-bold">K: ${cf.k}%</span>
+                            <span class="text-slate-500">(${cf.bagWeight}kg/袋)</span>
+                        </div>
+                        ${cf.note ? `<p class="text-[10px] text-slate-400 mt-0.5">${cf.note}</p>` : ''}
+                    </div>
+                    <button data-id="${cf.id}" class="btn-delete-custom-f text-slate-400 hover:text-red-500 transition p-1">
+                        <i class="fa-solid fa-trash-can text-xs"></i>
+                    </button>
+                `;
+
+                container.appendChild(card);
             });
 
-            document.getElementById(`tab-${tabKey}`).classList.remove('hidden');
-            const activeBtn = document.getElementById(`tab-btn-${tabKey}`);
-            if (activeBtn) {
-                activeBtn.className = 'tab-btn flex items-center space-x-2 px-4 py-2 text-sm font-semibold rounded-lg transition text-agri-700 bg-agri-50';
-            }
-        };
+            document.querySelectorAll('.btn-delete-custom-f').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    const id = e.currentTarget.getAttribute('data-id');
+                    const docRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'custom_fertilizers', id);
+                    await deleteDoc(docRef);
+                    showToast("カスタム肥料を削除しました", "info");
+                });
+            });
+        }
 
-        // FIREBASE CONFIG MODAL CONTROLS
-        window.openConfigModal = function() {
-            document.getElementById('firebase-config-json-input').value = JSON.stringify(activeFirebaseConfig, null, 2);
-            document.getElementById('config-modal').classList.remove('hidden');
-        };
 
-        window.closeConfigModal = function() {
-            document.getElementById('config-modal').classList.add('hidden');
-        };
+        // =========================================================================
+        // UI NAVIGATION & TAB SWITCHER
+        // =========================================================================
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            const targetTab = document.getElementById(`tab-${tabId}`);
+            if (targetTab) targetTab.classList.remove('hidden');
 
-        window.saveFirebaseConfigFromInput = function() {
-            try {
-                const val = document.getElementById('firebase-config-json-input').value;
-                const parsed = JSON.parse(val);
-                localStorage.setItem('agri_custom_fb_config', JSON.stringify(parsed));
-                activeFirebaseConfig = parsed;
-                closeConfigModal();
-                showToast("設定を更新しました。ページを再読み込みします...", "success");
-                setTimeout(() => location.reload(), 1200);
-            } catch (e) {
-                showToast("JSONフォーマットが正しくありません。", "error");
-            }
-        };
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                if (btn.getAttribute('data-tab') === tabId) {
+                    btn.classList.add('bg-agri-800', 'text-white', 'border-b-2', 'border-agri-400');
+                    btn.classList.remove('text-agri-200', 'text-agri-300');
+                } else {
+                    btn.classList.remove('bg-agri-800', 'text-white', 'border-b-2', 'border-agri-400');
+                    btn.classList.add('text-agri-200');
+                }
+            });
+        }
 
-        window.resetFirebaseConfig = function() {
-            localStorage.removeItem('agri_custom_fb_config');
-            showToast("デフォルト設定に戻しました。", "info");
-            setTimeout(() => location.reload(), 1000);
-        };
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const tabId = e.currentTarget.getAttribute('data-tab');
+                switchTab(tabId);
+            });
+        });
 
-        // UTILITY: TOAST NOTIFICATIONS
+
+        // =========================================================================
+        // TOAST & MODAL UTILITIES
+        // =========================================================================
         function showToast(message, type = 'info') {
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
+            
+            const bgClass = type === 'success' ? 'bg-agri-800 text-white' :
+                            type === 'error' ? 'bg-red-800 text-white' :
+                            'bg-slate-800 text-white';
 
-            const bgMap = {
-                success: 'bg-emerald-800 text-white',
-                error: 'bg-red-800 text-white',
-                warning: 'bg-amber-800 text-white',
-                info: 'bg-slate-800 text-white'
-            };
+            toast.className = `px-4 py-3 rounded-xl shadow-xl text-xs font-bold flex items-center gap-2 transform transition-all duration-300 translate-y-2 opacity-0 pointer-events-auto ${bgClass}`;
+            
+            const icon = type === 'success' ? '<i class="fa-solid fa-circle-check text-agri-400"></i>' :
+                         type === 'error' ? '<i class="fa-solid fa-circle-xmark text-red-400"></i>' :
+                         '<i class="fa-solid fa-circle-info text-sky-400"></i>';
 
-            toast.className = `pointer-events-auto px-4 py-3 rounded-xl shadow-lg text-xs font-semibold flex items-center space-x-2 transition transform duration-300 translate-y-2 opacity-0 ${bgMap[type] || bgMap.info}`;
-            toast.innerHTML = `<span>${message}</span>`;
-
+            toast.innerHTML = `${icon} <span>${message}</span>`;
             container.appendChild(toast);
 
-            requestAnimationFrame(() => {
+            setTimeout(() => {
                 toast.classList.remove('translate-y-2', 'opacity-0');
-            });
+            }, 10);
 
             setTimeout(() => {
                 toast.classList.add('opacity-0', 'translate-y-2');
                 setTimeout(() => toast.remove(), 300);
-            }, 3000);
+            }, 3500);
         }
+
+        function showModal(title, body, actions = []) {
+            const modal = document.getElementById('custom-modal');
+            const content = document.getElementById('modal-content');
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-body').textContent = body;
+
+            const actionsContainer = document.getElementById('modal-actions');
+            actionsContainer.innerHTML = '';
+
+            if (actions.length === 0) {
+                actions = [{ label: "閉じる", class: "bg-slate-800 text-white" }];
+            }
+
+            actions.forEach(act => {
+                const btn = document.createElement('button');
+                btn.className = `px-4 py-2 rounded-xl text-xs font-bold transition ${act.class}`;
+                btn.textContent = act.label;
+                btn.addEventListener('click', () => {
+                    closeModal();
+                    if (act.onClick) act.onClick();
+                });
+                actionsContainer.appendChild(btn);
+            });
+
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                content.classList.remove('scale-95');
+            }, 10);
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('custom-modal');
+            const content = document.getElementById('modal-content');
+            modal.classList.add('opacity-0');
+            content.classList.add('scale-95');
+            setTimeout(() => modal.classList.add('hidden'), 200);
+        }
+
+        window.copyCode = function(btn) {
+            const pre = btn.nextElementSibling;
+            if (!pre) return;
+            const text = pre.innerText;
+            
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                btn.textContent = "コピー完了！";
+                setTimeout(() => btn.textContent = "コピー", 2000);
+            } catch (e) {
+                console.error(e);
+            }
+            document.body.removeChild(textarea);
+        };
+
+        // App Initial Render
+        renderFertilizerRows();
+        updateAreaConversions();
+
     </script>
 </body>
 </html>
